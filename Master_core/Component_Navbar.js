@@ -16,6 +16,27 @@
     }
 
     window.twRootPath = detectRootPath();
+    
+    // ==========================================
+    // FIX LOGOUT AUTOMATICO 48 ORE
+    // ==========================================
+    window.checkGlobalSession = function() {
+        var token = localStorage.getItem("tw_token");
+        var loginTime = localStorage.getItem("tw_login_timestamp");
+        var now = Date.now();
+        var expirationTime = 48 * 60 * 60 * 1000; // 48 ore in millisecondi
+
+        if (!token || !loginTime || (now - parseInt(loginTime) > expirationTime)) {
+            localStorage.removeItem("tw_token");
+            localStorage.removeItem("tw_login_timestamp");
+            localStorage.removeItem("tw_user");
+            localStorage.removeItem("tw_structure_id");
+            window.location.replace(window.twRootPath + "login.html"); 
+            return false;
+        }
+        return true;
+    };
+    window.checkGlobalSession();
 
     if (!document.getElementById('tw-page-transition-overlay')) {
         const overlayHtml = `
@@ -96,6 +117,9 @@
             centerContent = `<div style="font-weight:900; font-size:16px; letter-spacing:1px; color:var(--accent); text-transform:uppercase; display:flex; align-items:center; gap:8px;"><i class="material-icons-round" style="font-size:20px;">${activePage==='turni'?'view_week':(activePage==='impostazioni'?'settings':(activePage==='crm'?'contact_page':'spa'))}</i> ${pageTitles[activePage] || 'TOUCH WELNESS'}</div>`;
         }
 
+        // ==========================================
+        // FIX ERRORE 404 (Maiuscole / Minuscole / Percorsi)
+        // ==========================================
         const html = `
             <style>
                 .tw-navbar-uni { display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, rgba(15,23,42,0.95) 0%, rgba(30,41,59,0.95) 100%); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(56, 189, 248, 0.2); padding: 10px 15px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.6); z-index: 1000; flex-shrink: 0; gap: 15px; }
@@ -131,7 +155,7 @@
                 <div class="nav-wing right-wing">
                     ${makeBtn('spa', 'pool', 'SPA', 'Piscina/Piscina_GUI.html')}
                     ${makeBtn('turni', 'view_week', 'TURNI', 'Planning_Turni.html')}
-                    ${makeBtn('impostazioni', 'settings', 'IMPOSTAZIONI', 'Impostazioni/Impostazioni.html')}
+                    ${makeBtn('impostazioni', 'settings', 'IMPOSTAZIONI', 'Impostazioni/impostazioni.html')} 
                     ${chatBtnHTML}
                 </div>
             </div>
