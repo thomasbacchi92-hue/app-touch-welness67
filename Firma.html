@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="it" translate="no">
+<head>
+<meta name="google" content="notranslate">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Firma Documento - TOUCH WELNESS</title>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+<style>
+    :root { --bg-body: #0f172a; --bg-panel: #1e293b; --accent: #38bdf8; --green: #10b981; --red: #ef4444; --text-main: #f8fafc; --text-muted: #94a3b8; }
+    body { font-family: -apple-system, sans-serif; background: var(--bg-body); margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; color: var(--text-main); overflow: hidden; user-select: none; }
+    * { box-sizing: border-box; }
+
+    /* SCHERMATA STANDBY */
+    #standbyScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; text-align: center; padding: 20px; }
+    .pulse-icon { font-size: 80px; color: var(--text-muted); opacity: 0.3; animation: pulse 2s infinite; margin-bottom: 20px; }
+    @keyframes pulse { 0% { transform: scale(0.95); opacity: 0.3; } 50% { transform: scale(1.05); opacity: 0.6; } 100% { transform: scale(0.95); opacity: 0.3; } }
+
+    /* SCHERMATA FIRMA */
+    #signatureScreen { display: none; flex-direction: column; height: 100%; width: 100%; background: #fff; color: #000; }
+    #docContainer { flex: 1; overflow-y: auto; padding: 30px; border-bottom: 2px dashed #cbd5e1; font-size: 16px; line-height: 1.6; }
+    
+    .signature-area { height: 250px; display: flex; flex-direction: column; background: #f8fafc; flex-shrink: 0; }
+    .signature-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background: #e2e8f0; font-weight: bold; color: #334155; text-transform: uppercase; font-size: 14px; }
+    #signaturePad { flex: 1; width: 100%; cursor: crosshair; touch-action: none; background: #fff; }
+    
+    .action-bar { display: flex; padding: 15px; background: #0f172a; gap: 15px; }
+    .btn { flex: 1; padding: 18px; border-radius: 12px; font-size: 16px; font-weight: 900; border: none; cursor: pointer; text-transform: uppercase; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.2s; }
+    .btn-red { background: rgba(239, 68, 68, 0.1); color: var(--red); border: 2px solid var(--red); }
+    .btn-green { background: var(--green); color: #fff; }
+    .btn:active { transform: scale(0.98); }
+
+    /* TOAST */
+    #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #000; padding: 12px 24px; border-radius: 30px; font-weight: bold; font-size: 14px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); opacity: 0; transition: 0.3s; pointer-events: none; z-index: 9999; }
+</style>
+</head>
+<body>
+
+<div id="toast">Notifica</div>
+
+<!-- STANDBY -->
+<div id="standbyScreen">
+    <i class="material-icons-round pulse-icon">draw</i>
+    <h1 style="margin:0 0 10px 0; color:var(--text-main); font-weight:900; letter-spacing:1px;">TOUCH WELNESS</h1>
+    <p style="color:var(--text-muted); font-size:18px; margin:0;" id="standbyText">In attesa di documenti da firmare...</p>
+</div>
+
+<!-- DOCUMENTO E FIRMA -->
+<div id="signatureScreen">
+    <div id="docContainer"></div>
+    <div class="signature-area">
+        <div class="signature-header">
+            <span><i class="material-icons-round" style="vertical-align:middle; font-size:18px; margin-right:5px;">edit</i> Apponi la tua firma qui sotto</span>
+            <span style="color:var(--red); font-size:12px; cursor:pointer;" onclick="clearPad()"><i class="material-icons-round" style="vertical-align:middle; font-size:14px;">delete</i> Cancella Firma</span>
+        </div>
+        <canvas id="signaturePad"></canvas>
+    </div>
+    <div class="action-bar">
+        <button class="btn btn-red" onclick="cancelSignature()"><i class="material-icons-round">close</i> ANNULLA</button>
+        <button class="btn btn-green" onclick="confirmSignature()"><i class="material-icons-round">check_circle</i> CONFERMA E INVIA</button>
+    </div>
+</div>
+
+<script>
+    const fbConfig = { apiKey: "AIzaSyCrDuK7SWHdbzrJR-pNpxmRwGnZgV2Dd2Y", authDomain: "touch-welness-massage.firebaseapp.com", databaseURL: "https://touch-welness-massage-default-rtdb.europe-west1.firebasedatabase.app", projectId: "touch-welness-massage", storageBucket: "touch-welness-massage.firebasestorage.app" };
+    if (!firebase.apps.length) firebase.initializeApp(fbConfig);
+
+    let structId = null;
+    let currentAppId = null;
+    let canvas, ctx;
+    let isDrawing = false;
+    let hasDrawn = false;
+
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.innerText = msg; t.style.opacity = '1';
+        setTimeout(() => t.style.opacity = '0', 3000);
+    }
+
+    function initAuth() {
+        const urlParams = new URLSearchParams(window.location.search);
+        let code = urlParams.get('code');
+        if(!code) code = localStorage.getItem('tw_tablet_code');
+
+        if(!code) {
+            document.getElementById('standbyText').innerText = "Codice di associazione mancante. Usa il link generato dal Desktop.";
+            return;
+        }
+
+        localStorage.setItem('tw_tablet_code', code);
+        document.getElementById('standbyText').innerText = "Connessione al server...";
+
+        firebase.database().ref(`MASTER_ADMIN_DB/firma_links/${code}`).once('value').then(snap => {
+            structId = snap.val();
+            if(!structId) {
+                document.getElementById('standbyText').innerText = "Codice di associazione non valido o scaduto.";
+            } else {
+                document.getElementById('standbyText').innerText = "Connesso. In attesa di documenti da firmare...";
+                listenToDesktop();
+            }
+        });
+    }
+
+    function listenToDesktop() {
+        firebase.database().ref(`MASTER_ADMIN_DB/structures_data/${structId}/device_sync/tablet`).on('value', snap => {
+            const data = snap.val();
+            if(data && data.status === 'pending') {
+                currentAppId = data.appId;
+                openSignatureMode(data.docs[0].content);
+            } else {
+                closeSignatureMode();
+            }
+        });
+    }
+
+    function openSignatureMode(htmlContent) {
+        document.getElementById('standbyScreen').style.display = 'none';
+        document.getElementById('signatureScreen').style.display = 'flex';
+        document.getElementById('docContainer').innerHTML = htmlContent;
+        initCanvas();
+    }
+
+    function closeSignatureMode() {
+        document.getElementById('signatureScreen').style.display = 'none';
+        document.getElementById('standbyScreen').style.display = 'flex';
+        currentAppId = null;
+    }
+
+    function initCanvas() {
+        canvas = document.getElementById('signaturePad');
+        ctx = canvas.getContext('2d');
+        
+        const rect = canvas.parentElement.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height - 35;
+        
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#0f172a';
+        hasDrawn = false;
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+
+        canvas.addEventListener('touchstart', handleTouchStart, {passive: false});
+        canvas.addEventListener('touchmove', handleTouchMove, {passive: false});
+        canvas.addEventListener('touchend', stopDrawing);
+    }
+
+    function getMousePos(e) {
+        const rect = canvas.getBoundingClientRect();
+        return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+
+    function getTouchPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+    }
+
+    function startDrawing(e) {
+        isDrawing = true; hasDrawn = true;
+        const pos = getMousePos(e);
+        ctx.beginPath(); ctx.moveTo(pos.x, pos.y);
+    }
+
+    function draw(e) {
+        if(!isDrawing) return;
+        const pos = getMousePos(e);
+        ctx.lineTo(pos.x, pos.y); ctx.stroke();
+    }
+
+    function handleTouchStart(e) {
+        e.preventDefault(); isDrawing = true; hasDrawn = true;
+        const pos = getTouchPos(e);
+        ctx.beginPath(); ctx.moveTo(pos.x, pos.y);
+    }
+
+    function handleTouchMove(e) {
+        e.preventDefault(); if(!isDrawing) return;
+        const pos = getTouchPos(e);
+        ctx.lineTo(pos.x, pos.y); ctx.stroke();
+    }
+
+    function stopDrawing() { isDrawing = false; }
+    
+    function clearPad() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        hasDrawn = false;
+    }
+
+    function cancelSignature() {
+        if(!structId) return;
+        firebase.database().ref(`MASTER_ADMIN_DB/structures_data/${structId}/device_sync/tablet`).update({ status: 'idle' }).then(() => {
+            closeSignatureMode();
+            showToast("Operazione annullata.");
+        });
+    }
+
+    function confirmSignature() {
+        if(!hasDrawn) { showToast("Devi prima firmare nel riquadro bianco!"); return; }
+        
+        // Rimosso il blocco forzato sulle checkbox: il cliente può firmare liberamente
+
+        const dataUrl = canvas.toDataURL('image/png');
+        
+        const containerClone = document.getElementById('docContainer').cloneNode(true);
+        const originalInputs = document.getElementById('docContainer').querySelectorAll('input');
+        const cloneInputs = containerClone.querySelectorAll('input');
+        
+        originalInputs.forEach((input, index) => {
+            if (input.type === 'checkbox') {
+                if (input.checked) cloneInputs[index].setAttribute('checked', 'checked');
+                else cloneInputs[index].removeAttribute('checked');
+            }
+        });
+
+        const finalHtml = containerClone.innerHTML;
+
+        firebase.database().ref(`MASTER_ADMIN_DB/structures_data/${structId}/device_sync/tablet`).update({
+            status: 'review',
+            signature: dataUrl,
+            docs: [{ content: finalHtml }]
+        }).then(() => {
+            closeSignatureMode();
+            document.getElementById('standbyText').innerText = "Documento inviato! In attesa della verifica del Desktop...";
+            showToast("Inviato con successo!");
+        });
+    }
+
+    window.addEventListener('DOMContentLoaded', initAuth);
+</script>
+</body>
+</html>

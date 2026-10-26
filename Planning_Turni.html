@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="it" translate="no">
+<head>
+<meta name="google" content="notranslate">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planning Turni - TOUCH WELNESS</title>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+  :root { --bg-body: #0f172a; --bg-panel: #1e293b; --border-line: #334155; --text-main: #f8fafc; --text-muted: #94a3b8; --accent: #38bdf8; --gold: #fbbf24; --purple: #a855f7; --red: #ef4444; --green: #10b981; }
+  :root.light-theme { --bg-body: #f8fafc; --bg-panel: #ffffff; --border-line: #e2e8f0; --text-main: #0f172a; --text-muted: #64748b; }
+  
+  body { font-family: -apple-system, sans-serif; background: var(--bg-body); margin: 0; display: flex; flex-direction: column; height: 100vh; color: var(--text-main); overflow-x: hidden; }
+  * { box-sizing: border-box; }
+
+  .main-content { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; align-items: center; }
+  .settings-container { width: 100%; max-width: 98%; transition: max-width 0.3s; }
+  .settings-card { background: var(--bg-panel); border: 1px solid var(--border-line); border-radius: 16px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); display: flex; flex-direction: column; }
+  
+  .form-input { width: 100%; padding: 10px; border: 1px solid var(--border-line); border-radius: 8px; font-size: 13px; background: var(--bg-body); color: var(--text-main); outline:none; }
+  .form-input:focus { border-color: var(--accent); }
+  
+  .btn-save { background: var(--purple); color: #fff; width: 100%; padding: 15px; border-radius: 10px; font-weight: 900; cursor: pointer; border: none; font-size: 14px; text-transform:uppercase; display:flex; align-items:center; justify-content:center; gap:8px; transition:0.2s;}
+  .btn-save:hover { filter: brightness(1.1); transform: translateY(-2px); box-shadow: 0 4px 15px rgba(168,85,247,0.4); }
+  .btn-outline { background: transparent; border: 1px solid var(--border-line); color: var(--text-main); }
+  .btn-danger { background: var(--bg-body); color: var(--red); border: 1px solid var(--red); }
+  .btn-danger:hover { background: var(--red); color: #fff; }
+
+  .square-action-btn { width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--border-line); background: transparent; color: var(--text-main); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; flex-shrink: 0;}
+  .square-action-btn:hover { background: rgba(255,255,255,0.05); transform: translateY(-2px); }
+
+  .switch { position: relative; display: inline-block; width: 36px; height: 20px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border-line); transition: .4s; border-radius: 24px; }
+  .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+  input:checked + .slider { background-color: var(--purple); } input:checked + .slider:before { transform: translateX(16px); }
+
+  .tabs-mini { display: flex; gap: 5px; }
+  .tab-mini-btn { padding: 8px 16px; background: transparent; border: 1px solid var(--border-line); color: var(--text-muted); font-weight: 900; border-radius: 6px; cursor: pointer; transition: 0.2s; text-transform: uppercase; font-size: 11px; }
+  .tab-mini-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
+
+  .roster-grid { display: grid; grid-template-columns: 160px repeat(7, minmax(140px, 1fr)); gap: 6px; overflow-x: auto; padding-bottom: 20px; align-items: start; }
+  .roster-header { background: rgba(0,0,0,0.2); padding: 12px 10px; font-weight: 900; text-align: center; border: 1px solid var(--border-line); border-radius: 8px; color: var(--text-main); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .roster-op-cell { background: var(--bg-panel); padding: 15px 10px; font-weight: 900; text-align: left; border: 1px solid var(--border-line); border-radius: 8px; color: var(--purple); display: flex; align-items: center; position: sticky; left: 0; z-index: 5; box-shadow: 4px 0 10px rgba(0,0,0,0.2); height: 100%; }
+  .roster-cell { background: var(--bg-body); padding: 8px; border: 1px solid var(--border-line); border-radius: 8px; transition: 0.2s; display: flex; flex-direction: column; align-items: center; min-height: 80px; justify-content: flex-start; outline: none; }
+  .roster-cell:hover, .roster-cell:focus { border-color: var(--accent); }
+  .roster-cell.off { background: rgba(239, 68, 68, 0.05); }
+  .roster-cell.on { background: rgba(56, 189, 248, 0.05); border-color: rgba(56, 189, 248, 0.2); }
+
+  .month-cell { background: var(--bg-body); border: 1px solid var(--border-line); border-radius: 8px; padding: 8px; height: 75px; display: flex; flex-direction: column; justify-content: space-between; cursor: pointer; transition: 0.2s; overflow: hidden; }
+  .month-cell:hover:not(.empty) { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+  .month-cell.empty { background: transparent; border: none; cursor: default; }
+  .m-date { font-size: 14px; font-weight: 900; color: var(--text-main); }
+  .m-shift { font-size: 11px; font-weight: bold; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+  .m-shift.off { color: var(--red); }
+
+  #tw-context-menu { display: none; position: fixed; background: var(--bg-panel); border: 1px solid var(--border-line); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 9999; flex-direction: column; overflow: hidden; min-width: 160px; }
+  .ctx-btn { background: transparent; border: none; padding: 12px 15px; color: var(--text-main); text-align: left; cursor: pointer; font-size: 13px; font-weight: bold; display: flex; align-items: center; gap: 10px; transition: 0.2s; }
+  .ctx-btn:hover { background: rgba(56, 189, 248, 0.1); color: var(--accent); }
+
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 10001; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+  .modal-box { background: var(--bg-panel); padding: 25px; border-radius: 16px; width: 90%; max-width: 380px; border: 1px solid var(--border-line); box-shadow: 0 10px 40px rgba(0,0,0,0.8); text-align:left;}
+
+  .pdf-op-row { display: flex; align-items: center; justify-content: space-between; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px; margin-bottom: 5px; }
+</style>
+<script>if(localStorage.getItem('tw_theme') === 'light') document.documentElement.classList.add('light-theme');</script>
+</head>
+<body>
+
+<div id="toastBlue" style="display:none; position:fixed; z-index:9999; right:30px; bottom:30px; background:var(--purple); color:#fff; padding:12px 24px; border-radius:8px; font-weight:bold; box-shadow:0 4px 15px rgba(0,0,0,0.4); pointer-events:none; transition: opacity 0.3s; align-items:center; gap:8px;">
+    <i class="material-icons-round" style="font-size:20px;">info</i><span id="toastMsg">Notifica</span>
+</div>
+
+<div id="tw-context-menu">
+    <button class="ctx-btn" onclick="window.turniModule.copyFromContext()"><i class="material-icons-round">content_copy</i> Copia Turno</button>
+    <button class="ctx-btn" onclick="window.turniModule.pasteFromContext()"><i class="material-icons-round">content_paste</i> Incolla Turno</button>
+</div>
+
+<!-- LASCIA SOLO QUESTO CONTENITORE: IL COMPONENT_NAVBAR.JS LO RIEMPIRA' -->
+<div id="tw-universal-navbar"></div>
+
+<div class="main-content">
+    <div class="settings-container">
+        <div class="settings-card">
+            
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-line); padding-bottom:15px; margin-bottom:20px;">
+                <h2 style="margin:0; border:none; padding:0; color:var(--purple); font-size:18px;"><i class="material-icons-round" style="vertical-align:middle;">calendar_month</i> Tabellone Orari</h2>
+                <div class="tabs-mini">
+                    <button id="btnViewWeek" class="tab-mini-btn active" onclick="window.turniModule.switchView('week')">Settimanale</button>
+                    <button id="btnViewMonth" class="tab-mini-btn" onclick="window.turniModule.switchView('month')">Mensile</button>
+                </div>
+            </div>
+
+            <!-- Filtro Operatore visibile solo in vista Mensile -->
+            <div id="monthOpSelector" style="display:none; margin-bottom:20px; justify-content:flex-end;">
+                <select id="turniOpSelect" class="form-input" style="width:250px; font-weight:bold; color:var(--purple);" onchange="window.turniModule.onOpChange()">
+                    <option value="">Caricamento...</option>
+                </select>
+            </div>
+
+            <div style="display:flex; flex-wrap:wrap; gap:15px; justify-content:space-between; align-items:center; margin-bottom:20px; background:var(--bg-body); padding:15px; border-radius:12px; border:1px solid var(--border-line);">
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <button class="square-action-btn" onclick="window.turniModule.changePeriod(-1)"><i class="material-icons-round">chevron_left</i></button>
+                    <div id="adminPeriodLabel" style="font-weight:900; color:var(--accent); font-size:15px; min-width:200px; text-align:center; text-transform:uppercase;">Caricamento...</div>
+                    <button class="square-action-btn" onclick="window.turniModule.changePeriod(1)"><i class="material-icons-round">chevron_right</i></button>
+                </div>
+                
+                <div id="weekActionsBox" style="display:flex; gap:10px;">
+                    <button class="btn-save" style="height:38px; font-size:11px; padding:0 15px; background:var(--red); width:auto;" onclick="document.getElementById('modalPdfExport').style.display='flex'">
+                        <i class="material-icons-round">picture_as_pdf</i> ESPORTA PDF
+                    </button>
+                    <button class="btn-save btn-outline" style="height:38px; font-size:11px; padding:0 15px; border-color:var(--accent); color:var(--accent); width:auto;" onclick="window.turniModule.copyPreviousWeek()">
+                        <i class="material-icons-round">content_copy</i> Copia Sett. Precedente
+                    </button>
+                    <button class="btn-save btn-outline" style="height:38px; font-size:11px; padding:0 15px; border-color:var(--gold); color:var(--gold); width:auto;" onclick="window.turniModule.applyMondayToAll()">
+                        <i class="material-icons-round">low_priority</i> Applica Lunedì a Tutti
+                    </button>
+                </div>
+            </div>
+
+            <div style="font-size:11px; color:var(--text-muted); margin-bottom:15px;"><i class="material-icons-round" style="font-size:14px; vertical-align:middle;">info</i> <b>Scorciatoie:</b> Usa Tasto Destro oppure <b>Ctrl+C</b> / <b>Ctrl+V</b> sulle celle per copiare e incollare rapidamente gli orari.</div>
+
+            <!-- VISTA SETTIMANALE -->
+            <div id="turniMasterGrid" class="roster-grid"></div>
+
+            <!-- VISTA MENSILE -->
+            <div id="turniMonthContainer" style="display:none; flex-direction:column; gap:10px;">
+                <div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:5px; text-align:center; font-size:11px; font-weight:900; color:var(--text-muted); text-transform:uppercase; padding-bottom:10px; border-bottom:1px solid var(--border-line);">
+                    <div>Lun</div><div>Mar</div><div>Mer</div><div>Gio</div><div>Ven</div><div>Sab</div><div>Dom</div>
+                </div>
+                <div id="turniMonthGrid" style="display:grid; grid-template-columns: repeat(7, 1fr); gap:5px;"></div>
+            </div>
+
+            <!-- Barra Inferiore -->
+            <div id="turniWeekSaveBox" style="margin-top:20px; border-top:1px dashed var(--border-line); padding-top:20px; display:flex; justify-content:space-between; align-items:center;">
+                <button class="btn-save btn-danger" onclick="window.turniModule.resetToPreset()" style="width:auto; height:50px; padding:0 25px; font-size:12px;">
+                    <i class="material-icons-round">restart_alt</i> RESET ORARI DEFAULT
+                </button>
+                <button class="btn-save" onclick="window.turniModule.saveTurniWeek()" style="width:auto; height:50px; padding:0 40px; font-size:14px; background:var(--purple);">
+                    <i class="material-icons-round">save</i> SALVA E PUBBLICA TURNI
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Esportazione PDF -->
+<div id="modalPdfExport" class="modal-overlay" onclick="if(event.target===this) this.style.display='none'">
+    <div class="modal-box">
+        <h3 style="color:var(--text-main); margin-top:0; border-bottom:1px solid var(--border-line); padding-bottom:10px; font-size:15px; text-transform:uppercase; margin-bottom:15px;">
+            <i class="material-icons-round" style="vertical-align:middle; color:var(--red);">picture_as_pdf</i> Esporta Planning
+        </h3>
+        
+        <label style="font-size:11px; color:var(--text-muted); font-weight:bold; margin-bottom:5px; display:block;">Periodo da Esportare:</label>
+        <select id="pdfPeriodMode" class="form-input" style="margin-bottom:20px; font-weight:bold; color:var(--accent);">
+            <option value="week">Settimana Corrente</option>
+            <option value="month">Mese Intero</option>
+        </select>
+        
+        <label style="font-size:11px; color:var(--text-muted); font-weight:bold; margin-bottom:5px; display:block;">Seleziona Operatori:</label>
+        <div id="pdfOpList" style="max-height:150px; overflow-y:auto; margin-bottom:20px; padding-right:5px;">
+            <!-- Popolato dinamicamente -->
+        </div>
+        
+        <div style="display:flex; gap:10px;">
+            <button class="btn-save btn-outline" style="flex:1; height:38px;" onclick="document.getElementById('modalPdfExport').style.display='none'">ANNULLA</button>
+            <button class="btn-save" style="flex:1; background:var(--red); height:38px;" onclick="window.turniModule.generatePDF()">CREA PDF</button>
+        </div>
+    </div>
+</div>
+
+<!-- Contenitore Esportazione per il Motore HTML2PDF (Visibile ma fuori dallo schermo per evitare l'errore del file vuoto) -->
+<div id="pdf-render-zone" style="position:absolute; top:0; left:-9999px; background:#fff; color:#000; width:1120px; padding:40px; font-family:sans-serif; z-index:-1000; display:block;"></div>
+
+<!-- Modal Modifica Giorno Singolo (Solo per Mensile) -->
+<div id="modalEditDayTurno" class="modal-overlay" onclick="if(event.target===this) this.style.display='none'">
+    <div class="modal-box">
+        <h3 id="medTitle" style="color:var(--accent); margin-top:0; border-bottom:1px solid var(--border-line); padding-bottom:10px; font-size:15px; text-transform:uppercase; margin-bottom:15px;">Modifica Turno</h3>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; background:rgba(0,0,0,0.2); padding:10px; border-radius:8px;">
+            <b style="font-size:12px; color:var(--text-main);">Lavora in questo giorno?</b>
+            <label class="switch"><input type="checkbox" id="medActive" onchange="window.turniModule.toggleMedActive()"><span class="slider"></span></label>
+        </div>
+        <div id="medTimesWrap" style="text-align:left;">
+            <label style="font-size:10px; color:var(--text-muted); font-weight:bold; margin-bottom:5px; display:block; text-transform:uppercase;">Tipologia Turno</label>
+            <select id="medTipo" class="form-input" style="margin-bottom:15px;" onchange="window.turniModule.toggleMedShift()">
+                <option value="continuato">Turno Unico</option>
+                <option value="spezzato">Turno Spezzato</option>
+            </select>
+            <label style="font-size:10px; color:var(--text-muted); font-weight:bold; margin-bottom:5px; display:block; text-transform:uppercase;">Mattina / Orario Completo</label>
+            <div style="display:flex; gap:10px; margin-bottom:15px;">
+                <input type="time" id="med_m_in" class="form-input" style="text-align:center;">
+                <input type="time" id="med_m_out" class="form-input" style="text-align:center;">
+            </div>
+            <div id="medPomBlock" style="display:none; flex-direction:column;">
+                <label style="font-size:10px; color:var(--text-muted); font-weight:bold; margin-bottom:5px; display:block; text-transform:uppercase;">Pomeriggio</label>
+                <div style="display:flex; gap:10px;">
+                    <input type="time" id="med_p_in" class="form-input" style="border-color:var(--accent); text-align:center;">
+                    <input type="time" id="med_p_out" class="form-input" style="border-color:var(--accent); text-align:center;">
+                </div>
+            </div>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:25px;">
+            <button class="btn-save btn-outline" style="flex:1; height:38px;" onclick="document.getElementById('modalEditDayTurno').style.display='none'">ANNULLA</button>
+            <button class="btn-save" style="flex:1; background:var(--purple); height:38px;" onclick="window.turniModule.saveMedDay()">APPLICA</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // PERCORSO LOGIN AGGIORNATO (essendo in Root)
+    const localStructId = localStorage.getItem("tw_structure_id");
+    if(!localStructId) window.location.href="login.html";
+    
+    const fbConfig = { apiKey: "AIzaSyCrDuK7SWHdbzrJR-pNpxmRwGnZgV2Dd2Y", authDomain: "touch-welness-massage.firebaseapp.com", databaseURL: "https://touch-welness-massage-default-rtdb.europe-west1.firebasedatabase.app", projectId: "touch-welness-massage", storageBucket: "touch-welness-massage.firebasestorage.app" };
+    if (!firebase.apps.length) firebase.initializeApp(fbConfig);
+    window.twStructId = localStructId;
+
+    window.showToast = function(msg) {
+        const x = document.getElementById("toastBlue");
+        if(x) {
+            document.getElementById("toastMsg").innerText = msg;
+            x.style.display = "flex"; x.style.opacity = "1";
+            setTimeout(() => { x.style.opacity = "0"; setTimeout(() => x.style.display="none", 300); }, 3000);
+        }
+    };
+
+    document.addEventListener('click', function(e) {
+        const ctx = document.getElementById('tw-context-menu');
+        if (ctx && ctx.style.display === 'flex' && !ctx.contains(e.target)) {
+            ctx.style.display = 'none';
+        }
+    });
+
+    /* ================= MOTORE TURNI MASTER ================= */
+    window.turniModule = (function() {
+        let currentViewMode = 'week'; 
+        let currentWeekOffset = 0;
+        let currentMonthOffset = 0;
+        let weekStartStr = "";
+        let weekEndStr = "";
+        let allTurniData = {}; 
+        let activeOperators = []; 
+        let currentMonthOp = null; 
+        
+        let clipboardTurno = null; 
+        let hoveredCell = null;    
+
+        const giorniNomi = { 1:'Lunedì', 2:'Martedì', 3:'Mercoledì', 4:'Giovedì', 5:'Venerdì', 6:'Sabato', 7:'Domenica' };
+
+        // Risoluzione Local Timezone (Bug della griglia mensile bianca)
+        function toLocalISO(dateObj) {
+            const y = dateObj.getFullYear();
+            const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const d = String(dateObj.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        function init() {
+            calcPeriod(0);
+            loadOperators();
+            fetchData();
+            initKeyboardShortcuts();
+        }
+
+        // Funzione Autosalvataggio Silenzioso in RAM per evitare perdita di dati cambiando view
+        function syncDOMtoMemory() {
+            if (activeOperators.length === 0) return;
+            if (!allTurniData[weekStartStr]) allTurniData[weekStartStr] = {};
+            activeOperators.forEach(op => {
+                const sNick = op.safeNick;
+                if (!allTurniData[weekStartStr][op.nick]) allTurniData[weekStartStr][op.nick] = {};
+                for(let i=1; i<=7; i++) {
+                    const el = document.getElementById(`act_${sNick}_${i}`);
+                    if(el) allTurniData[weekStartStr][op.nick][i] = getCellData(sNick, i);
+                }
+            });
+        }
+
+        function switchView(mode) {
+            if (currentViewMode === 'week' && mode === 'month') {
+                syncDOMtoMemory(); // Salva i dati correnti in cache per non perderli
+            }
+
+            currentViewMode = mode;
+            document.getElementById('btnViewWeek').classList.toggle('active', mode === 'week');
+            document.getElementById('btnViewMonth').classList.toggle('active', mode === 'month');
+            
+            const weekActions = document.getElementById('weekActionsBox');
+            const gridWeek = document.getElementById('turniMasterGrid');
+            const saveBox = document.getElementById('turniWeekSaveBox');
+            const gridMonth = document.getElementById('turniMonthContainer');
+            const monthOpSel = document.getElementById('monthOpSelector');
+
+            if(mode === 'week') {
+                weekActions.style.display = 'flex';
+                gridWeek.style.display = 'grid';
+                saveBox.style.display = 'flex';
+                gridMonth.style.display = 'none';
+                monthOpSel.style.display = 'none';
+            } else {
+                weekActions.style.display = 'none';
+                gridWeek.style.display = 'none';
+                saveBox.style.display = 'none';
+                gridMonth.style.display = 'flex';
+                monthOpSel.style.display = 'flex';
+                if(!currentMonthOp && activeOperators.length > 0) {
+                    currentMonthOp = activeOperators[0].nick;
+                    document.getElementById('turniOpSelect').value = currentMonthOp;
+                }
+            }
+            calcPeriod(0);
+            renderAll();
+        }
+
+        function calcPeriod(offset) {
+            if(currentViewMode === 'week') {
+                currentWeekOffset += offset;
+                const now = new Date();
+                const day = now.getDay() || 7; 
+                now.setDate(now.getDate() - day + 1 + (currentWeekOffset * 7));
+                const start = new Date(now);
+                const end = new Date(now);
+                end.setDate(end.getDate() + 6);
+
+                weekStartStr = toLocalISO(start); // Fix LocalTime
+                weekEndStr = toLocalISO(end);     // Fix LocalTime
+
+                const fmtStart = start.toLocaleDateString('it-IT', { day:'2-digit', month:'short' });
+                const fmtEnd = end.toLocaleDateString('it-IT', { day:'2-digit', month:'short', year:'numeric' });
+                document.getElementById('adminPeriodLabel').innerText = `${fmtStart} - ${fmtEnd}`;
+            } else {
+                currentMonthOffset += offset;
+                const d = new Date();
+                d.setMonth(d.getMonth() + currentMonthOffset);
+                const monthName = d.toLocaleDateString('it-IT', { month:'long', year:'numeric' });
+                document.getElementById('adminPeriodLabel').innerText = monthName;
+            }
+        }
+
+        function changePeriod(offset) {
+            if (currentViewMode === 'week') syncDOMtoMemory(); // Salva anche se scorri le settimane
+            calcPeriod(offset);
+            renderAll();
+        }
+
+        function loadOperators() {
+            firebase.database().ref(`MASTER_ADMIN_DB/users`).once('value').then(snap => {
+                const users = snap.val() || {};
+                activeOperators = [];
+                const sel = document.getElementById('turniOpSelect');
+                const pdfList = document.getElementById('pdfOpList');
+                sel.innerHTML = '';
+                pdfList.innerHTML = '';
+                
+                Object.values(users).forEach(u => {
+                    const isGhost = (u.attivo === false || u.attiva === false || u.eliminato === true || u.deleted === true);
+                    let isMatch = false;
+                    if(u.structureId && String(u.structureId) === String(window.twStructId)) isMatch = true;
+                    if(!u.structureId) isMatch = true; 
+                    
+                    if (!isGhost && isMatch) {
+                        const safeNick = (u.nick || '').replace(/[^a-zA-Z0-9]/g, '_');
+                        activeOperators.push({ nick: u.nick, safeNick: safeNick, name: `${u.name || ''} ${u.surname || ''}`.trim() });
+                        sel.innerHTML += `<option value="${u.nick}">${u.name} ${u.surname || ''}</option>`;
+                        pdfList.innerHTML += `<div class="pdf-op-row"><b style="font-size:12px; color:var(--text-main);">${u.name} ${u.surname || ''}</b> <label class="switch"><input type="checkbox" class="pdf-op-check" value="${u.nick}" checked><span class="slider"></span></label></div>`;
+                    }
+                });
+                if(!currentMonthOp && activeOperators.length > 0) currentMonthOp = activeOperators[0].nick;
+                renderAll();
+            });
+        }
+
+        function fetchData() {
+            if(!window.twStructId) return;
+            firebase.database().ref(`MASTER_ADMIN_DB/structures_data/${window.twStructId}/turni`).on('value', snap => {
+                allTurniData = snap.val() || {};
+                renderAll();
+            });
+        }
+
+        function renderAll() {
+            if(currentViewMode === 'week') renderMasterGrid();
+            else renderMonthGrid();
+        }
+
+        function onOpChange() {
+            currentMonthOp = document.getElementById('turniOpSelect').value;
+            renderMonthGrid();
+        }
+
+        /* ================= VISTA SETTIMANALE INLINE ================= */
+        function renderMasterGrid() {
+            const grid = document.getElementById('turniMasterGrid');
+            if(!grid) return;
+            if(activeOperators.length === 0) { grid.innerHTML = `<div style="grid-column:1/-1; padding:40px; text-align:center; color:var(--text-muted);">Nessun operatore attivo.</div>`; return; }
+
+            let h = `<div class="roster-op-cell" style="background:transparent; border:none; box-shadow:none;"></div>`;
+            const dStr = new Date(weekStartStr);
+            for(let i=1; i<=7; i++) {
+                const dateObj = new Date(dStr);
+                dateObj.setDate(dStr.getDate() + (i - 1));
+                const dayNum = dateObj.getDate();
+                const monthStr = dateObj.toLocaleDateString('it-IT', {month: 'short'});
+                h += `<div class="roster-header"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">${giorniNomi[i]}</span><span style="font-size:18px; color:var(--accent);">${dayNum} ${monthStr}</span></div>`;
+            }
+
+            activeOperators.forEach(op => {
+                h += `<div class="roster-op-cell"><i class="material-icons-round" style="margin-right:8px; font-size:18px;">person</i> ${op.name || 'Sconosciuto'}</div>`;
+                
+                for(let i=1; i<=7; i++) {
+                    let isPreset = false;
+                    if (!allTurniData[weekStartStr] || !allTurniData[weekStartStr][op.nick]) isPreset = true;
+
+                    let d = { active: (i<7), tipo: 'continuato', m_in: "09:00", m_out: "18:00", p_in: "", p_out: "" };
+                    if(!isPreset && allTurniData[weekStartStr][op.nick] && allTurniData[weekStartStr][op.nick][i]) {
+                        d = allTurniData[weekStartStr][op.nick][i];
+                    }
+                    
+                    const sNick = op.safeNick;
+                    const checked = d.active ? 'checked' : '';
+                    const cellBgClass = d.active ? 'on' : 'off';
+                    const dispTimes = d.active ? 'flex' : 'none';
+                    const dispRiposo = d.active ? 'none' : 'block';
+                    const dispPom = d.tipo === 'spezzato' ? 'flex' : 'none';
+
+                    h += `
+                    <div class="roster-cell ${cellBgClass}" id="cell_${sNick}_${i}" tabindex="0"
+                         onmouseenter="window.turniModule.setHover('${sNick}', ${i})"
+                         oncontextmenu="window.turniModule.openContext(event, '${sNick}', ${i})">
+                        <div style="display:flex; justify-content:space-between; align-items:center; width:100%; margin-bottom:6px; border-bottom:1px dashed var(--border-line); padding-bottom:4px;">
+                            <span style="font-size:10px; font-weight:bold; color:var(--text-muted); text-transform:uppercase;">In Turno</span>
+                            <label class="switch" style="transform:scale(0.7); transform-origin:right; margin:0;"><input type="checkbox" id="act_${sNick}_${i}" ${checked} onchange="window.turniModule.toggleCell('${sNick}', ${i})"><span class="slider"></span></label>
+                        </div>
+                        
+                        <div id="wrap_${sNick}_${i}" style="display:${dispTimes}; flex-direction:column; gap:5px; width:100%;">
+                            <select id="tipo_${sNick}_${i}" class="form-input" style="height:26px; font-size:10px; padding:0 4px; background:rgba(0,0,0,0.2); border-color:transparent; cursor:pointer;" onchange="window.turniModule.toggleShift('${sNick}', ${i})">
+                                <option value="continuato" ${d.tipo==='continuato'?'selected':''}>Turno Unico</option>
+                                <option value="spezzato" ${d.tipo==='spezzato'?'selected':''}>Spezzato</option>
+                            </select>
+                            <div style="display:flex; gap:4px; width:100%;">
+                                <input type="time" id="min_${sNick}_${i}" value="${d.m_in}" class="form-input" style="height:26px; padding:0; font-size:11px; text-align:center; flex:1;">
+                                <input type="time" id="mout_${sNick}_${i}" value="${d.m_out}" class="form-input" style="height:26px; padding:0; font-size:11px; text-align:center; flex:1;">
+                            </div>
+                            <div id="pom_${sNick}_${i}" style="display:${dispPom}; gap:4px; width:100%;">
+                                <input type="time" id="pin_${sNick}_${i}" value="${d.p_in}" class="form-input" style="height:26px; padding:0; font-size:11px; text-align:center; border-color:var(--accent); flex:1;">
+                                <input type="time" id="pout_${sNick}_${i}" value="${d.p_out}" class="form-input" style="height:26px; padding:0; font-size:11px; text-align:center; border-color:var(--accent); flex:1;">
+                            </div>
+                        </div>
+                        <div id="off_${sNick}_${i}" style="display:${dispRiposo}; font-size:13px; font-weight:900; color:var(--red); padding-top:10px;">RIPOSO</div>
+                    </div>`;
+                }
+            });
+            grid.innerHTML = h;
+        }
+
+        function toggleCell(sNick, day) {
+            const isAct = document.getElementById(`act_${sNick}_${day}`).checked;
+            const cell = document.getElementById(`cell_${sNick}_${day}`);
+            const wrap = document.getElementById(`wrap_${sNick}_${day}`);
+            const offMsg = document.getElementById(`off_${sNick}_${day}`);
+
+            if(isAct) {
+                cell.classList.remove('off'); cell.classList.add('on');
+                wrap.style.display = 'flex'; offMsg.style.display = 'none';
+            } else {
+                cell.classList.remove('on'); cell.classList.add('off');
+                wrap.style.display = 'none'; offMsg.style.display = 'block';
+            }
+        }
+
+        function toggleShift(sNick, day) {
+            const tipo = document.getElementById(`tipo_${sNick}_${day}`).value;
+            const pBlock = document.getElementById(`pom_${sNick}_${day}`);
+            if(pBlock) pBlock.style.display = tipo === 'spezzato' ? 'flex' : 'none';
+        }
+
+        function resetToPreset() {
+            if(!confirm("Vuoi reimpostare la griglia corrente agli orari di default (Lunedì-Sabato 09:00-18:00, Domenica Riposo)? Perderai le modifiche non salvate.")) return;
+            activeOperators.forEach(op => {
+                const sNick = op.safeNick;
+                for(let i=1; i<=7; i++) {
+                    let defaultData = { active: (i<7), tipo: 'continuato', m_in: "09:00", m_out: "18:00", p_in: "", p_out: "" };
+                    setCellData(sNick, i, defaultData);
+                }
+            });
+            window.showToast("Griglia resettata. Premi SALVA per applicare le modifiche.");
+        }
+
+        /* ================= COPIA E INCOLLA RAPIDO ================= */
+        function setHover(sNick, day) { hoveredCell = { sNick, day }; }
+
+        function getCellData(sNick, day) {
+            return {
+                active: document.getElementById(`act_${sNick}_${day}`).checked,
+                tipo: document.getElementById(`tipo_${sNick}_${day}`).value,
+                m_in: document.getElementById(`min_${sNick}_${day}`).value,
+                m_out: document.getElementById(`mout_${sNick}_${day}`).value,
+                p_in: document.getElementById(`pin_${sNick}_${day}`).value,
+                p_out: document.getElementById(`pout_${sNick}_${day}`).value
+            };
+        }
+
+        function setCellData(sNick, day, data) {
+            document.getElementById(`act_${sNick}_${day}`).checked = data.active;
+            document.getElementById(`tipo_${sNick}_${day}`).value = data.tipo;
+            document.getElementById(`min_${sNick}_${day}`).value = data.m_in;
+            document.getElementById(`mout_${sNick}_${day}`).value = data.m_out;
+            document.getElementById(`pin_${sNick}_${day}`).value = data.p_in;
+            document.getElementById(`pout_${sNick}_${day}`).value = data.p_out;
+            toggleCell(sNick, day);
+            toggleShift(sNick, day);
+        }
+
+        function openContext(e, sNick, day) {
+            e.preventDefault(); hoveredCell = { sNick, day };
+            const ctx = document.getElementById('tw-context-menu');
+            ctx.style.left = e.clientX + 'px'; ctx.style.top = e.clientY + 'px';
+            ctx.style.display = 'flex';
+        }
+
+        function copyFromContext() { document.getElementById('tw-context-menu').style.display = 'none'; if(hoveredCell) executeCopy(); }
+        function pasteFromContext() { document.getElementById('tw-context-menu').style.display = 'none'; if(hoveredCell) executePaste(); }
+
+        function executeCopy() {
+            if(!hoveredCell) return;
+            clipboardTurno = getCellData(hoveredCell.sNick, hoveredCell.day);
+            window.showToast("Turno Copiato!");
+        }
+
+        function executePaste() {
+            if(!hoveredCell || !clipboardTurno) { if(!clipboardTurno) window.showToast("Nessun turno copiato."); return; }
+            setCellData(hoveredCell.sNick, hoveredCell.day, clipboardTurno);
+            window.showToast("Turno Incollato!");
+        }
+
+        function initKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                if(currentViewMode !== 'week' || !hoveredCell) return;
+                if(document.activeElement && document.activeElement.tagName === 'INPUT') return;
+                if (e.ctrlKey && (e.key === 'c' || e.key === 'C')) { e.preventDefault(); executeCopy(); }
+                if (e.ctrlKey && (e.key === 'v' || e.key === 'V')) { e.preventDefault(); executePaste(); }
+            });
+        }
+
+        function saveTurniWeek() {
+            if(activeOperators.length === 0) return;
+            syncDOMtoMemory(); // Aggiorna prima l'oggetto RAM
+            firebase.database().ref(`MASTER_ADMIN_DB/structures_data/${window.twStructId}/turni/${weekStartStr}`).set(allTurniData[weekStartStr]).then(() => {
+                window.showToast("Tutti i turni della settimana salvati con successo!");
+            });
+        }
+
+        function applyMondayToAll() {
+            if(activeOperators.length === 0) return;
+            if(!confirm("Copia orari di Lunedì per tutta la settimana (su TUTTI gli operatori)?")) return;
+            activeOperators.forEach(op => {
+                const sNick = op.safeNick;
+                const monData = getCellData(sNick, 1);
+                for(let i=2; i<=7; i++) setCellData(sNick, i, monData);
+            });
+            window.showToast("Clonati! Premi Salva Turni per confermare.");
+        }
+
+        function copyPreviousWeek() {
+            if(activeOperators.length === 0) return;
+            
+            // Calcolo esatto per LocalTime -7 giorni
+            const prevDate = new Date(weekStartStr);
+            prevDate.setDate(prevDate.getDate() - 7);
+            const prevWeekKey = toLocalISO(prevDate);
+
+            firebase.database().ref(`MASTER_ADMIN_DB/structures_data/${window.twStructId}/turni/${prevWeekKey}`).once('value').then(snap => {
+                const prevData = snap.val();
+                if(!prevData || Object.keys(prevData).length===0) { window.showToast("La settimana precedente è vuota."); return; }
+                if(!confirm("Sovrascrivere con i dati della settimana precedente?")) return;
+
+                activeOperators.forEach(op => {
+                    const sNick = op.safeNick;
+                    if(prevData[op.nick]) {
+                        for(let i=1; i<=7; i++) {
+                            const d = prevData[op.nick][i];
+                            if(d) setCellData(sNick, i, d);
+                        }
+                    }
+                });
+                window.showToast("Copia eseguita! Premi Salva Turni.");
+            });
+        }
+
+        /* ================= VISTA MENSILE ================= */
+        function getMondayKeyLocal(d) {
+            d = new Date(d); 
+            var day = d.getDay(), diff = d.getDate() - day + (day == 0 ? -6:1); 
+            d.setDate(diff);
+            return toLocalISO(d); // Fix LocalTime
+        }
+
+        function renderMonthGrid() {
+            const grid = document.getElementById('turniMonthGrid');
+            if(!grid) return;
+            const d = new Date(); d.setMonth(d.getMonth() + currentMonthOffset);
+            const year = d.getFullYear(); const month = d.getMonth();
+            const firstDay = new Date(year, month, 1); const lastDay = new Date(year, month + 1, 0);
+            let startDayOfWeek = firstDay.getDay() || 7; let numDays = lastDay.getDate();
+            let h = '';
+            for(let i=1; i<startDayOfWeek; i++) h += `<div class="month-cell empty"></div>`;
+
+            for(let day=1; day<=numDays; day++) {
+                const currDate = new Date(year, month, day);
+                const wKey = getMondayKeyLocal(currDate);
+                const dIdx = currDate.getDay() || 7;
+                const dateStrIso = toLocalISO(currDate);
+                
+                let shiftData = null;
+                if(allTurniData[wKey] && allTurniData[wKey][currentMonthOp] && allTurniData[wKey][currentMonthOp][dIdx]) {
+                    shiftData = allTurniData[wKey][currentMonthOp][dIdx];
+                }
+
+                let shiftHtml = `<span class="m-shift off">RIPOSO</span>`;
+                if(shiftData && shiftData.active) {
+                    if(shiftData.tipo === 'spezzato') shiftHtml = `<span class="m-shift">${shiftData.m_in}-${shiftData.m_out} / ${shiftData.p_in}-${shiftData.p_out}</span>`;
+                    else shiftHtml = `<span class="m-shift">${shiftData.m_in} - ${shiftData.m_out}</span>`;
+                }
+
+                const borderStyle = (dateStrIso === toLocalISO(new Date())) ? 'border: 2px solid var(--accent);' : '';
+                h += `<div class="month-cell" style="${borderStyle}" onclick="window.turniModule.openMed('${dateStrIso}', '${wKey}', ${dIdx})"><span class="m-date">${day}</span>${shiftHtml}</div>`;
+            }
+            grid.innerHTML = h;
+        }
+
+        let medCurrentWKey = ""; let medCurrentDIdx = 1;
+        function openMed(dateStr, wKey, dIdx) {
+            if(!currentMonthOp) return;
+            medCurrentWKey = wKey; medCurrentDIdx = dIdx;
+            const fmtDate = new Date(dateStr).toLocaleDateString('it-IT', { day:'numeric', month:'long' });
+            document.getElementById('medTitle').innerHTML = `<b style="color:var(--text-main); font-size:16px;">${document.getElementById('turniOpSelect').options[document.getElementById('turniOpSelect').selectedIndex].text}</b><br><span style="font-size:12px; color:var(--text-muted);">${giorniNomi[dIdx]} ${fmtDate}</span>`;
+
+            let d = { active: false, tipo: 'continuato', m_in: "09:00", m_out: "18:00", p_in: "", p_out: "" };
+            if(allTurniData[wKey] && allTurniData[wKey][currentMonthOp] && allTurniData[wKey][currentMonthOp][dIdx]) d = allTurniData[wKey][currentMonthOp][dIdx];
+
+            document.getElementById('medActive').checked = d.active;
+            document.getElementById('medTipo').value = d.tipo;
+            document.getElementById('med_m_in').value = d.m_in;
+            document.getElementById('med_m_out').value = d.m_out;
+            document.getElementById('med_p_in').value = d.p_in || "";
+            document.getElementById('med_p_out').value = d.p_out || "";
+            toggleMedActive(); toggleMedShift();
+            document.getElementById('modalEditDayTurno').style.display = 'flex';
+        }
+
+        function toggleMedActive() {
+            const isAct = document.getElementById('medActive').checked;
+            document.getElementById('medTimesWrap').style.opacity = isAct ? '1' : '0.4';
+            document.getElementById('medTimesWrap').style.pointerEvents = isAct ? 'auto' : 'none';
+        }
+
+        function toggleMedShift() {
+            document.getElementById('medPomBlock').style.display = document.getElementById('medTipo').value === 'spezzato' ? 'flex' : 'none';
+        }
+
+        function saveMedDay() {
+            if(!currentMonthOp) return;
+            const payload = {
+                active: document.getElementById('medActive').checked,
+                tipo: document.getElementById('medTipo').value,
+                m_in: document.getElementById('med_m_in').value,
+                m_out: document.getElementById('med_m_out').value,
+                p_in: document.getElementById('med_p_in').value,
+                p_out: document.getElementById('med_p_out').value
+            };
+            firebase.database().ref(`MASTER_ADMIN_DB/structures_data/${window.twStructId}/turni/${medCurrentWKey}/${currentMonthOp}/${medCurrentDIdx}`).set(payload).then(() => {
+                document.getElementById('modalEditDayTurno').style.display = 'none';
+                window.showToast("Turno salvato!");
+            });
+        }
+
+        /* ================= ESPORTAZIONE PDF PROFESSIONALE ================= */
+        function generatePDF() {
+            document.getElementById('modalPdfExport').style.display = 'none';
+            window.showToast("Elaborazione PDF in corso...");
+            
+            const mode = document.getElementById('pdfPeriodMode').value;
+            const checkboxes = document.querySelectorAll('.pdf-op-check');
+            const selectedOps = [];
+            checkboxes.forEach(chk => { if(chk.checked) selectedOps.push(chk.value); });
+            
+            if(selectedOps.length === 0) { alert("Seleziona almeno un operatore."); return; }
+
+            const renderZone = document.getElementById('pdf-render-zone');
+            
+            // Sincronizza per stampare i dati appena digitati (anche se non ancora salvati sul database)
+            if(currentViewMode === 'week') syncDOMtoMemory(); 
+
+            let html = `
+                <div style="border-bottom: 3px solid #000; padding-bottom: 10px; margin-bottom: 20px;">
+                    <h1 style="margin:0; font-size:24px; color:#1e293b; letter-spacing:2px;">TOUCH WELLNESS</h1>
+                    <h3 style="margin:5px 0 0 0; color:#64748b;">PLANNING TURNI STAFF - ${document.getElementById('adminPeriodLabel').innerText}</h3>
+                </div>
+                <table style="width: 100%; border-collapse: collapse; font-family: sans-serif; font-size: 11px;">
+            `;
+
+            if(mode === 'week') {
+                html += `<thead><tr>
+                    <th style="border:1px solid #334155; padding:8px; background:#f8fafc; text-align:left;">OPERATORE</th>`;
+                const dStr = new Date(weekStartStr);
+                for(let i=1; i<=7; i++) {
+                    const dateObj = new Date(dStr); dateObj.setDate(dStr.getDate() + (i - 1));
+                    html += `<th style="border:1px solid #334155; padding:8px; background:#f8fafc; width:12%;">${giorniNomi[i].substring(0,3)} ${dateObj.getDate()}</th>`;
+                }
+                html += `</tr></thead><tbody>`;
+
+                activeOperators.forEach(op => {
+                    if(!selectedOps.includes(op.nick)) return;
+                    html += `<tr><td style="border:1px solid #334155; padding:10px; font-weight:bold;">${op.name}</td>`;
+                    for(let i=1; i<=7; i++) {
+                        let cellTxt = "<span style='color:#ef4444;'>RIPOSO</span>";
+                        if(allTurniData[weekStartStr] && allTurniData[weekStartStr][op.nick] && allTurniData[weekStartStr][op.nick][i]) {
+                            const d = allTurniData[weekStartStr][op.nick][i];
+                            if(d.active) {
+                                cellTxt = d.tipo === 'spezzato' ? `${d.m_in}-${d.m_out}<br>${d.p_in}-${d.p_out}` : `${d.m_in} - ${d.m_out}`;
+                            }
+                        }
+                        html += `<td style="border:1px solid #334155; padding:10px; text-align:center;">${cellTxt}</td>`;
+                    }
+                    html += `</tr>`;
+                });
+                html += `</tbody></table>`;
+            } else {
+                html += `<p style="color:#ef4444; font-weight:bold;">L'esportazione mensile per gruppi in PDF verrà esportata in formato settimanale di default in questo template.</p></table>`;
+            }
+
+            html += `<div style="margin-top:30px; font-size:9px; color:#94a3b8; text-align:right;">Documento generato automaticamente il ${new Date().toLocaleDateString('it-IT')}</div>`;
+            
+            renderZone.innerHTML = html;
+            
+            // Timeout asincrono per permettere al browser di calcolare le grandezze reali (Fix PDF Vuoto)
+            setTimeout(() => {
+                var opt = {
+                  margin:       10,
+                  filename:     `Turni_${document.getElementById('adminPeriodLabel').innerText.replace(/ /g, '_')}.pdf`,
+                  image:        { type: 'jpeg', quality: 0.98 },
+                  html2canvas:  { scale: 2, useCORS: true },
+                  jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+                };
+
+                html2pdf().set(opt).from(renderZone).save().then(() => {
+                    window.showToast("PDF Scaricato con successo!");
+                });
+            }, 300);
+        }
+
+        return {
+            init, changePeriod, switchView, onOpChange,
+            toggleCell, toggleShift, resetToPreset, saveTurniWeek,
+            applyMondayToAll, copyPreviousWeek,
+            setHover, openContext, copyFromContext, pasteFromContext,
+            openMed, toggleMedActive, toggleMedShift, saveMedDay,
+            generatePDF
+        };
+    })();
+
+    // Inizializzazione Blindata
+    (function() {
+        function boot() {
+            if(window.turniModule && typeof window.turniModule.init === 'function') window.turniModule.init();
+        }
+        if (document.readyState === 'complete' || document.readyState === 'interactive') setTimeout(boot, 50);
+        else document.addEventListener('DOMContentLoaded', boot);
+    })();
+</script>
+
+<!-- PERCORSO NAVBAR AGGIORNATO (Essendo in Root) -->
+<script src="Master_core/Component_Navbar.js"></script>
+
+</body>
+</html>

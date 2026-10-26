@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="it" translate="no">
+<head>
+<meta name="google" content="notranslate">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Agenda Piscina e SPA - TOUCH WELNESS</title>
+
+<script>
+    (function() {
+        var isLogged = localStorage.getItem('tw_structure_id') || localStorage.getItem('tw_user');
+        if (!isLogged) window.location.replace('../login.html');
+    })();
+</script>
+
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+<script src="../Master_core/Component_Modals.js?v=8"></script>
+<script src="Piscina_DB.js?v=8"></script>
+<script src="Piscina_Logic.js?v=8"></script>
+<script src="Piscina_Backup.js?v=8"></script>
+
+<style>
+    :root { 
+        --bg-body: #0f172a; --bg-panel: #1e293b; --border-line: #334155; 
+        --text-main: #f8fafc; --text-muted: #94a3b8; 
+        --accent: #38bdf8; --gold: #fbbf24; --green: #10b981; --red: #ef4444; --purple: #a855f7;
+    }
+    :root.light-theme { --bg-body: #f8fafc; --bg-panel: #ffffff; --border-line: #e2e8f0; --text-main: #0f172a; --text-muted: #64748b; }
+    
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, sans-serif; background: var(--bg-body); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; color: var(--text-main); }
+    
+    .top-control-bar { display: flex; gap: 20px; padding: 12px 20px; background: var(--bg-panel); border-bottom: 1px solid var(--border-line); align-items: flex-end; flex-shrink: 0; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 10; }
+    
+    .search-minimal { display: flex; align-items: center; background: rgba(0,0,0,0.25); border: 1px solid var(--border-line); border-radius: 20px; padding: 0 12px; height: 40px; transition: 0.2s; }
+    .search-minimal:focus-within { border-color: var(--accent); background: rgba(56, 189, 248, 0.05); box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2); }
+    .search-minimal input { border: none; background: transparent; color: var(--text-main); font-weight: bold; width: 110px; outline: none; padding: 0 8px; font-size: 13px; }
+    .search-minimal input::placeholder { color: var(--text-muted); font-weight: normal; }
+    .search-minimal button { background: transparent; border: none; color: var(--accent); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; transition: 0.2s; }
+    .search-minimal button:hover { transform: scale(1.1); }
+
+    .insert-module { display: flex; gap: 12px; flex: 1; align-items: flex-end; transition: all 0.3s ease; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; transition: all 0.3s ease; }
+    .form-group label { font-size: 10px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; white-space: nowrap;}
+    .form-input { height: 40px; padding: 0 12px; border: 1px solid var(--border-line); border-radius: 8px; font-size: 13px; font-weight: bold; outline: none; background: var(--bg-body); color: var(--text-main); color-scheme: dark; transition: 0.2s; box-sizing: border-box; width: 100%; }
+    .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2); }
+    select.form-input { cursor: pointer; }
+    
+    .btn-save.primary-action { background: #2563eb !important; color: #ffffff !important; border: none; height: 40px; font-weight: 900; font-size: 12px; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; text-transform: uppercase; transition: 0.2s; padding: 0 20px; white-space: nowrap; }
+    .btn-save.primary-action:hover { background: #1d4ed8 !important; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(37, 99, 235, 0.4); }
+    
+    .square-action-btn { width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--red); background: transparent; color: var(--red); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; flex-shrink: 0;}
+    .square-action-btn:hover { background: rgba(239, 68, 68, 0.1); transform: translateY(-2px); }
+
+    .main-split { display: flex; flex: 1; overflow: hidden; }
+    
+    /* COLONNA SINISTRA: APPUNTAMENTI */
+    .left-pane { width: 40%; min-width: 480px; background: var(--bg-body); border-right: 2px solid var(--border-line); display: flex; flex-direction: column; overflow: hidden; }
+    
+    .pane-header { padding: 4px 15px; background: var(--bg-panel); border-bottom: 1px solid var(--border-line); font-weight: 900; color: var(--accent); display: flex; justify-content: space-between; align-items: center; text-transform: uppercase; font-size: 12px; flex-shrink: 0; min-height: 32px; }
+    
+    /* GRIGLIA ADATTIVA SENZA SCROLL ORIZZONTALE */
+    .appointments-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 12px; overflow-y: auto; overflow-x: hidden; flex: 1; align-content: start; scroll-behavior: smooth; }
+    
+    .app-row { background: var(--bg-panel); border: 1px solid var(--border-line); border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1); min-width: 0; }
+    .app-row:hover { border-color: var(--accent); background: rgba(56, 189, 248, 0.05); }
+    
+    .row-info { display: flex; flex: 1; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; min-width: 0; }
+    .row-time { font-weight: 900; color: var(--accent); font-size: 15px; flex-shrink: 0; }
+    .row-badge { font-size: 8px; font-weight: 900; padding: 2px 4px; border-radius: 4px; text-transform: uppercase; flex-shrink: 0; }
+    .row-text { font-size: 12px; color: var(--text-main); font-weight: bold; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+    .row-sub { font-size: 10px; color: var(--text-muted); font-weight: bold; margin-left: auto; flex-shrink: 0;}
+    
+    .row-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    .btn-mini { height: 26px; width: 26px; border-radius: 6px; border: 1px solid transparent; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; background: transparent; }
+    .btn-mini.check { color: var(--text-muted); border-color: var(--border-line); }
+    .btn-mini.check.checked { background: rgba(16, 189, 129, 0.1); color: var(--green); border-color: var(--green); }
+    .btn-mini.edit { color: var(--gold); border-color: rgba(251,191,36,0.3); background: rgba(251,191,36,0.05); }
+    .btn-mini.del { color: var(--red); border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.05); }
+    .btn-mini:hover { filter: brightness(1.2); transform: translateY(-1px); }
+
+    /* COLONNA DESTRA: MONITOR */
+    .right-pane { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg-body); }
+    
+    .monitor-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg-body); }
+    .monitor-table { flex: 1; display: flex; flex-direction: column; width: 100%; border-collapse: collapse; background: transparent; }
+    .monitor-table thead { display: flex; width: 100%; flex-shrink: 0; background: rgba(0,0,0,0.2); }
+    .monitor-table tbody { flex: 1; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; }
+    .monitor-table tr { display: flex; width: 100%; flex: 1; border-bottom: 1px solid var(--border-line); transition: 0.2s; }
+    .monitor-table tr:hover { background: rgba(56, 189, 248, 0.05); }
+    
+    .monitor-table th { flex: 1; display: flex; align-items: center; justify-content: center; padding: 6px; color: var(--text-muted); font-size: 11px; text-transform: uppercase; }
+    .monitor-table td { flex: 1; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 15px; color: var(--text-main); }
+    
+    /* REGOLE ASSOLUTE SEMAFORO (Sovrascrivono i td interni) */
+    .monitor-table tr.active-row td { color: var(--text-main); background: rgba(56, 189, 248, 0.05); }
+    .monitor-table tr.empty-row td { opacity: 0.4; color: var(--text-muted); }
+    .monitor-table tr.limit-yellow td { color: var(--gold) !important; background: rgba(251, 191, 36, 0.15) !important; font-weight: 900 !important; }
+    .monitor-table tr.limit-red td { color: var(--red) !important; background: rgba(239, 68, 68, 0.15) !important; font-weight: 900 !important; }
+    .monitor-table tr td.check-active { color: var(--green) !important; }
+
+    /* POPUP */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 5000; align-items: center; justify-content: center; backdrop-filter: blur(5px); padding: 15px; }
+    .modal-box { background: var(--bg-panel); padding: 25px; border-radius: 16px; width: 100%; max-width: 400px; border: 1px solid var(--border-line); box-shadow: 0 10px 40px rgba(0,0,0,0.8); text-align: center; }
+    .btn-save { background: var(--accent); color: #0f172a; border: none; height: 36px; font-weight: 900; font-size: 12px; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; text-transform: uppercase; transition: 0.2s; padding: 0 15px; }
+    .btn-save:hover { transform: translateY(-2px); filter: brightness(1.1); }
+    .btn-outline { background: transparent; border: 1px solid var(--border-line); color: var(--text-main); }
+
+    #toastBlue { display:none; position:fixed; z-index:9999; right:30px; bottom:30px; background:#2563eb; color:#fff; padding:12px 24px; border-radius:8px; font-weight:bold; box-shadow:0 4px 15px rgba(0,0,0,0.4); align-items:center; gap:8px; }
+</style>
+<script>if(localStorage.getItem('tw_theme') === 'light') document.documentElement.classList.add('light-theme');</script>
+</head>
+<body>
+
+<div id="toastBlue"><i class="material-icons-round">info</i><span id="toastMsg">Notifica</span></div>
+<div id="tw-universal-navbar"></div>
+<script src="../Master_core/Component_Navbar.js?v=6"></script>
+
+<div class="top-control-bar">
+    <div class="search-minimal">
+        <i class="material-icons-round" style="color:var(--text-muted); font-size:18px;">search</i>
+        <input type="number" id="searchCam" placeholder="Cerca Cam..." onkeydown="if(event.key==='Enter') window.searchRoom()">
+        <button onclick="window.searchRoom()" title="Trova"><i class="material-icons-round" style="font-size:20px;">arrow_forward</i></button>
+    </div>
+    
+    <div class="insert-module">
+        <input type="hidden" id="pId">
+        <div class="form-group" id="groupOra" style="flex:0.5"><label>Ora</label><input type="time" id="pOra" class="form-input" onkeydown="if(event.key==='Enter') window.addEntry()"></div>
+        <div class="form-group" id="groupCam" style="flex:0.5"><label>Cam</label><input type="number" id="pCam" class="form-input" placeholder="N°" onkeydown="if(event.key==='Enter') window.addEntry()"></div>
+        <div class="form-group" id="groupPax" style="flex:0.5"><label>Pax</label><input type="number" id="pPers" class="form-input" value="2" onkeydown="if(event.key==='Enter') window.addEntry()"></div>
+        <div class="form-group" id="groupCog" style="flex:1.5"><label>Ospite</label><input type="text" id="pCog" class="form-input" placeholder="Cognome" onkeydown="if(event.key==='Enter') window.addEntry()"></div>
+        <div class="form-group" id="groupNote" style="flex:1"><label>Note</label><input type="text" id="pNote" class="form-input" placeholder="Opzionale" onkeydown="if(event.key==='Enter') window.addEntry()"></div>
+        <div class="form-group" id="groupArea" style="flex:1">
+            <label>Settore</label>
+            <select id="pArea" class="form-input" onkeydown="if(event.key==='Enter') window.addEntry()">
+                <option value="Piscina">Piscina</option>
+                <option value="SPA">SPA (Percorso)</option>
+                <option value="Esterni">Ospiti Esterni</option>
+            </select>
+        </div>
+        
+        <button class="btn-save primary-action" id="btnSave" onclick="window.addEntry()">
+            <i class="material-icons-round">add_circle</i> <span id="btnSaveText">INSERISCI</span>
+        </button>
+        <button class="square-action-btn btn-outline" id="btnCancel" style="display:none; color:var(--red); border-color:var(--red);" onclick="window.resetForm()" title="Annulla Modifica">
+            <i class="material-icons-round">close</i>
+        </button>
+    </div>
+</div>
+
+<div class="main-split">
+    <div class="left-pane">
+        <div class="pane-header">
+            <span>Ingressi Registrati</span>
+            <button onclick="exportSimpleExcel()" style="background:transparent; border:none; color:var(--green); font-weight:900; cursor:pointer; display:flex; align-items:center; gap:5px; font-size:10px;"><i class="material-icons-round" style="font-size:14px;">download</i> EXCEL</button>
+        </div>
+        <div class="appointments-grid" id="poolGrid"></div>
+    </div>
+
+    <div class="right-pane">
+        <div class="pane-header" style="color:var(--accent); border-bottom-color:var(--border-line);">
+            <span>Monitor Occupazione</span>
+        </div>
+        <div class="monitor-container">
+            <table class="monitor-table">
+                <thead>
+                    <tr>
+                        <th style="flex:0.8;">FASCE</th>
+                        <th style="color:#0284c7;">PISCINA</th>
+                        <th style="color:#db2777;">SPA</th>
+                        <th>TOT. PAX</th>
+                        <th style="color:var(--green);">CHECK-IN</th>
+                    </tr>
+                </thead>
+                <tbody id="slotTable"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="actionModal" class="modal-overlay" onclick="if(event.target===this) window.closeModal()">
+    <div class="modal-box">
+        <h3 id="modalTitle" style="color:var(--accent); margin-top:0; border-bottom:1px solid var(--border-line); padding-bottom:10px;">Risultato Ricerca</h3>
+        <p id="modalMsg" style="font-size:13px; color:var(--text-muted); margin-bottom:20px;"></p>
+        <div id="modalBtns" style="display:flex; flex-direction:column; gap:10px;"></div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const now = new Date();
+        document.getElementById("pOra").value = now.toTimeString().split(' ')[0].substring(0,5);
+        if(typeof window.initDB === 'function') window.initDB();
+    });
+    
+    document.addEventListener('keydown', function(event) {
+        if (event.key === "Escape") { window.closeModal(); window.resetForm(); }
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="it" translate="no">
+<head>
+<meta name="google" content="notranslate">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>CRM Anagrafica - TOUCH WELNESS</title>
+
+<script>
+    (function() {
+        var isLogged = localStorage.getItem('tw_structure_id') || localStorage.getItem('tw_user');
+        if (!isLogged) window.location.replace('./login.html');
+    })();
+</script>
+
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+<script src="DeviceSync.js"></script>
+<script src="Master_core/Desktop_AuthSync.js"></script>
+<script src="Master_core/Desktop_OfflineSync.js"></script>
+
+<style>
+  :root { 
+      --bg-body: #0f172a; --bg-panel: #1e293b; --border-line: #334155; 
+      --text-main: #f8fafc; --text-muted: #94a3b8; 
+      --accent: #38bdf8; --gold: #fbbf24; --green: #10b981; --red: #ef4444; --purple: #a855f7;
+  }
+  :root.light-theme {
+      --bg-body: #f8fafc; --bg-panel: #ffffff; --border-line: #e2e8f0;
+      --text-main: #0f172a; --text-muted: #64748b;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, sans-serif; background: var(--bg-body); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; color: var(--text-main); }
+  
+  textarea { resize: none !important; }
+  textarea::-webkit-resizer { display: none !important; opacity: 0 !important; visibility: hidden !important; -webkit-appearance: none !important; }
+  ::-webkit-scrollbar-corner { background: transparent !important; display: none !important; }
+
+  /* ZONA FILTRI (TOP BAR) IDENTICA A LISTA.HTML */
+  .top-bar { 
+      background: var(--bg-panel); 
+      padding: 10px 15px; 
+      display: flex; 
+      flex-direction: column; 
+      gap: 10px; 
+      border-bottom: 2px solid var(--border-line); 
+      flex-shrink: 0; 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
+  }
+  .filter-row { 
+      display: flex; 
+      gap: 12px; 
+      width: 100%; 
+      max-width: 1600px;
+      margin: 0 auto;
+      align-items: center; 
+      justify-content: space-between;
+      flex-wrap: nowrap; 
+  }
+  .search-box { 
+      display: flex; align-items: center; background: var(--bg-body); padding: 0 12px; 
+      border-radius: 6px; flex: 1; max-width: 450px; border: 1px solid var(--border-line); 
+      transition: border-color 0.3s; height: 36px; box-sizing: border-box; 
+  }
+  .search-box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.3); }
+  .search-box input { border: none; background: transparent; color: var(--text-main); font-size: 13px; outline: none; width: 100%; margin-left: 8px; }
+
+  /* CONTENUTO PRINCIPALE E TABELLA IDENTICI A LISTA.HTML */
+  .main-content { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; align-items: center; }
+  .list-container { width: 100%; max-width: 1600px; display: flex; flex-direction: column; gap: 15px; }
+
+  .table-responsive { width: 100%; overflow-x: auto; background: var(--bg-panel); border-radius: 12px; border: 1px solid var(--border-line); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+  .compact-table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+  .compact-table th { padding: 12px 15px; border-bottom: 2px solid var(--border-line); color: var(--text-muted); background: var(--bg-body); white-space: nowrap; font-size: 11px; font-weight: 900; text-transform: uppercase; position: sticky; top: 0; z-index: 2; }
+  .compact-table td { padding: 12px 15px; border-bottom: 1px solid var(--border-line); color: var(--text-main); vertical-align: middle; transition: background-color 0.2s; }
+  .compact-table tr:hover td { background-color: rgba(255,255,255,0.03); }
+
+  .client-name { font-weight: 900; font-size: 14px; text-transform: uppercase; color: var(--text-main); cursor: pointer; transition: 0.2s; }
+  .client-name:hover { color: var(--accent); }
+
+  /* PAGINAZIONE */
+  .pagination-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      background: var(--bg-panel); padding: 10px 15px; border-radius: 10px;
+      border: 1px solid var(--border-line); box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      flex-wrap: wrap; gap: 10px;
+  }
+  .page-info { font-size: 12px; color: var(--text-muted); font-weight: bold; }
+  .page-controls { display: flex; align-items: center; gap: 5px; }
+  .page-btn {
+      min-width: 32px; height: 32px; padding: 0 8px; border-radius: 6px;
+      border: 1px solid var(--border-line); background: var(--bg-body);
+      color: var(--text-main); font-size: 12px; font-weight: bold;
+      display: inline-flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: 0.2s;
+  }
+  .page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .page-btn.active { background: var(--accent); color: #0f172a; border-color: var(--accent); font-weight: 900; }
+  .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* STILI MODALE INTERNA */
+  .form-input { width: 100%; height: 40px; padding: 0 12px; border: 1px solid var(--border-line); border-radius: 8px; font-size: 13px; outline:none; background: var(--bg-body); color: var(--text-main); transition:0.2s; box-sizing: border-box; }
+  .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.3); }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+  .data-table th { color: var(--text-muted); padding: 12px; border-bottom: 2px solid var(--border-line); font-size: 11px; text-transform: uppercase; background: var(--bg-panel); position: sticky; top:0; z-index:2;}
+  .data-table td { padding: 12px; border-bottom: 1px solid var(--border-line); color: var(--text-main); vertical-align: middle;}
+  .data-table tr { transition: 0.2s; }
+  .data-table tr:hover { background: rgba(56, 189, 248, 0.05); }
+
+  #toastBlue { visibility: hidden; min-width: 250px; background-color: var(--toast-blue, #2563eb); color: #fff; text-align: center; border-radius: 8px; padding: 12px; position: fixed; right: 30px; bottom: 30px; z-index: 9999; font-size: 14px; font-weight: bold; opacity: 0; transition: 0.5s; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+  #toastBlue.show { visibility: visible; opacity: 1; bottom: 40px; }
+</style>
+<script>if(localStorage.getItem('tw_theme') === 'light') document.documentElement.classList.add('light-theme');</script>
+</head>
+<body>
+
+<div id="toastBlue"><i class="material-icons-round" style="vertical-align:middle; font-size:16px;">info</i> <span id="toastMsg">Notifica</span></div>
+
+<!-- NAVBAR UNIVERSALE -->
+<div id="tw-universal-navbar"></div>
+<script src="Master_core/Component_Navbar.js?v=8"></script>
+
+<!-- TOP BAR STILE LISTA.HTML -->
+<div class="top-bar">
+    <div class="filter-row">
+        <div style="display:flex; align-items:center; gap:10px;">
+            <i class="material-icons-round" style="color:var(--accent); font-size:24px;">contact_page</i>
+            <span style="font-weight:900; font-size:15px; text-transform:uppercase; color:var(--text-main); letter-spacing:0.5px;">Anagrafica Clienti SPA</span>
+        </div>
+        
+        <div class="search-box">
+            <i class="material-icons-round" style="color:var(--text-muted); font-size:18px;">search</i>
+            <input type="text" id="searchLocalCRM" placeholder="Cerca cliente per nome, camera o telefono..." autocomplete="off" oninput="window.handleCRMSearch()">
+        </div>
+
+        <div id="crmTotalBadge" style="font-size:12px; font-weight:bold; color:var(--text-muted); background:var(--bg-body); padding:8px 14px; border-radius:6px; border:1px solid var(--border-line);">
+            In caricamento...
+        </div>
+    </div>
+</div>
+
+<!-- MAIN CONTENT FLUIDO STILE LISTA.HTML -->
+<div class="main-content" id="crmView">
+    <div class="list-container" id="crmListContainer">
+        <div style="text-align:center; padding:50px; color:var(--text-muted); font-weight:bold; font-size:16px;">
+            <i class="material-icons-round" style="animation: twSpin 1.5s linear infinite; font-size:40px; color:var(--accent); margin-bottom:10px;">sync</i><br>
+            Sincronizzazione Anagrafica in corso...
+            <style>@keyframes twSpin { 100% { transform: rotate(360deg); } }</style>
+        </div>
+    </div>
+</div>
+
+<!-- POP-UP PROFILO CLIENTE -->
+<div id="customerProfileModal" class="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; align-items:center; justify-content:center; background:rgba(15,23,42,0.85); backdrop-filter:blur(8px); z-index:6000;" onclick="if(event.target===this) this.style.display='none'">
+    <div class="modal-box tw-premium-modal" style="background:var(--bg-panel); border:1px solid var(--border-line); max-width: 850px; width: 95%; padding: 25px; text-align:left; border-radius:16px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); max-height:90vh; display:flex; flex-direction:column;">
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid var(--border-line); padding-bottom: 15px; margin-bottom: 20px; flex-shrink:0;">
+            <h2 style="margin:0; color:var(--accent); font-size:24px; display:flex; align-items:center; gap:10px;">
+                <i class="material-icons-round" style="font-size:32px;">account_circle</i>
+                <span id="cp_nome" style="text-transform:uppercase;">Cliente</span>
+            </h2>
+            <button class="btn-icon" style="font-size:28px; border:none; background:transparent; color:var(--text-muted); cursor:pointer; transition:0.2s;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-muted)'" onclick="document.getElementById('customerProfileModal').style.display='none'"><i class="material-icons-round">close</i></button>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px; flex-shrink:0;">
+            <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; border-bottom:4px solid var(--gold); text-align:center;"><div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Telefono</div><div id="cp_tel" style="font-size:18px; font-weight:900; color:var(--text-main)">-</div></div>
+            <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; border-bottom:4px solid var(--accent); text-align:center;"><div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Data Nascita</div><div id="cp_dob" style="font-size:18px; font-weight:900; color:var(--text-main)">-</div></div>
+            <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; border-bottom:4px solid var(--green); text-align:center;"><div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Spesa Totale SPA</div><div id="cp_spent" style="font-size:20px; font-weight:900; color:var(--green)">0.00 €</div></div>
+        </div>
+        
+        <div class="tabs-header" style="display:flex; gap:10px; border-bottom:1px solid var(--border-line); margin-bottom:15px; flex-shrink:0;">
+            <button id="tabBtn-history" class="tab-btn active" style="background:transparent; border:none; color:var(--accent); border-bottom:3px solid var(--accent); padding:10px 15px; font-weight:bold; cursor:pointer; font-size:14px; text-transform:uppercase;" onclick="window.sysOpenProfileTab('history')"><i class="material-icons-round" style="font-size:18px; vertical-align:middle;">history</i> Storico e Note</button>
+            <button id="tabBtn-docs" class="tab-btn" style="background:transparent; border:none; color:var(--text-muted); border-bottom:3px solid transparent; padding:10px 15px; font-weight:bold; cursor:pointer; font-size:14px; text-transform:uppercase;" onclick="window.sysOpenProfileTab('docs')"><i class="material-icons-round" style="font-size:18px; vertical-align:middle;">verified_user</i> Documenti Firmati</button>
+        </div>
+        
+        <div style="flex:1; overflow-y:auto; padding-right:5px; display:flex; flex-direction:column;">
+            <div id="tab-history" class="tab-content" style="display:block; flex:1;">
+                <div class="form-group" style="margin-bottom:20px;">
+                    <label style="color:var(--accent); font-weight:900; font-size:12px; display:block; margin-bottom:8px;">NOTE INTERNE CLIENTE (Condivise)</label>
+                    <textarea id="cp_note" rows="2" class="form-input" style="font-size:14px; height:auto; min-height:80px; width:100%; box-sizing:border-box; padding:12px; border-radius:8px; border:1px solid var(--border-line); background:var(--bg-body); color:var(--text-main); outline:none; resize:none;" placeholder="Preferenze, allergie, note generali..." onchange="window.sysSaveCustomerNote()"></textarea>
+                </div>
+                <div style="border:1px solid var(--border-line); border-radius:12px; background:var(--bg-body); overflow:hidden;">
+                    <table class="data-table">
+                        <thead style="background:var(--bg-panel); position:sticky; top:0;">
+                            <tr>
+                                <th style="padding:12px; border-bottom:1px solid var(--border-line); color:var(--text-muted);">Data</th>
+                                <th style="padding:12px; border-bottom:1px solid var(--border-line); color:var(--text-muted);">Struttura SPA</th>
+                                <th style="padding:12px; border-bottom:1px solid var(--border-line); color:var(--text-muted);">Trattamento / Operatore</th>
+                                <th style="padding:12px; border-bottom:1px solid var(--border-line); text-align:right; color:var(--text-muted);">Costo / Stato</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cp_history"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div id="tab-docs" class="tab-content" style="display:none; flex:1;">
+                <div style="border:1px solid var(--border-line); border-radius:12px; background:var(--bg-body); overflow:hidden;">
+                    <table class="data-table">
+                        <thead style="background:var(--bg-panel); position:sticky; top:0;">
+                            <tr>
+                                <th style="padding:12px; border-bottom:1px solid var(--border-line); color:var(--text-muted);">Data Firma</th>
+                                <th style="padding:12px; border-bottom:1px solid var(--border-line); color:var(--text-muted);">Nome Documento Registrato</th>
+                                <th style="padding:12px; border-bottom:1px solid var(--border-line); text-align:right; color:var(--text-muted);">Azione</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cp_docs_table"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // CONFIGURAZIONE PAGINAZIONE E STATO
+    window.localCustomersData = [];
+    window.localAppsData = []; 
+    window.currentOpenCustId = null;
+    window.crmCurrentPage = 1;
+    const CRM_ITEMS_PER_PAGE = 50;
+
+    // VISUALIZZATORE E FUNZIONI PDF
+    window.sysViewPdfModal = function(url, docId) {
+        if(!url) return;
+        let previewUrl = url;
+        if(url.includes('/view')) previewUrl = url.substring(0, url.indexOf('/view')) + '/preview';
+        
+        const modalId = 'tw-pdf-viewer';
+        if(document.getElementById(modalId)) document.getElementById(modalId).remove();
+        
+        const html = `
+        <div id="${modalId}" class="modal-overlay" style="display:flex; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15,23,42,0.95); backdrop-filter:blur(8px); z-index:100000; align-items:center; justify-content:center; flex-direction:column; animation:fadeIn 0.3s ease;">
+            <div style="width:95%; max-width:1000px; background:var(--bg-panel); border-radius:16px; overflow:hidden; display:flex; flex-direction:column; height:95vh; border:1px solid var(--border-line); box-shadow:0 20px 50px rgba(0,0,0,0.8);">
+                <div style="padding:12px 20px; display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.3); border-bottom:1px solid var(--border-line);">
+                    <h3 style="margin:0; color:var(--accent); font-size:16px; display:flex; align-items:center; gap:8px;">
+                        <i class="material-icons-round">picture_as_pdf</i> ANTEPRIMA DOCUMENTO
+                    </h3>
+                    <div style="display:flex; gap:10px;">
+                        <button onclick="window.sysDownloadPdf('${url}')" style="background:rgba(16, 185, 129, 0.1); color:var(--green); border:1px solid rgba(16, 185, 129, 0.3); border-radius:8px; padding:6px 12px; cursor:pointer; font-weight:bold; display:flex; align-items:center; gap:5px; transition:0.2s;" onmouseover="this.style.background='var(--green)'; this.style.color='#fff';" onmouseout="this.style.background='rgba(16, 185, 129, 0.1)'; this.style.color='var(--green)';">
+                            <i class="material-icons-round" style="font-size:16px;">download</i> SALVA
+                        </button>
+                        <button onclick="window.sysDeletePdf('${docId}')" style="background:rgba(239, 68, 68, 0.1); color:var(--red); border:1px solid rgba(239, 68, 68, 0.3); border-radius:8px; padding:6px 12px; cursor:pointer; font-weight:bold; display:flex; align-items:center; gap:5px; transition:0.2s;" onmouseover="this.style.background='var(--red)'; this.style.color='#fff';" onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'; this.style.color='var(--red)';">
+                            <i class="material-icons-round" style="font-size:16px;">delete</i> ELIMINA
+                        </button>
+                        <button onclick="document.getElementById('${modalId}').remove()" style="background:transparent; color:var(--text-muted); border:1px solid var(--border-line); border-radius:8px; padding:6px 12px; cursor:pointer; font-weight:bold; display:flex; align-items:center; gap:5px; transition:0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff';">
+                            <i class="material-icons-round" style="font-size:16px;">close</i> CHIUDI
+                        </button>
+                    </div>
+                </div>
+                <div style="flex:1; background:#f8fafc; position:relative;">
+                    <iframe src="${previewUrl}" style="width:100%; height:100%; border:none;"></iframe>
+                </div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+    };
+
+    window.sysDownloadPdf = function(url) {
+        if(!url) return;
+        const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+        if(match && match[1]) {
+            const fileId = match[1];
+            window.open(`https://drive.google.com/uc?export=download&id=${fileId}`, '_blank');
+        } else {
+            window.open(url, '_blank');
+        }
+    };
+
+    window.sysDeletePdf = function(docId) {
+        if(!confirm("ATTENZIONE: Vuoi rimuovere questo documento dall'anagrafica del cliente?")) return;
+        if(window.currentOpenCustId) {
+            firebase.database().ref(`MASTER_ADMIN_DB/global_customers/${window.currentOpenCustId}/docs/${docId}`).remove().then(() => {
+                if(window.showToast) window.showToast("Documento rimosso dall'anagrafica.");
+                if(document.getElementById('tw-pdf-viewer')) document.getElementById('tw-pdf-viewer').remove();
+                const row = document.getElementById(`row_doc_${docId}`);
+                if(row) row.remove();
+            });
+        }
+    };
+
+    function initNuovoCRM() {
+        const structId = localStorage.getItem('tw_structure_id');
+        if (!structId) return;
+
+        firebase.database().ref('MASTER_ADMIN_DB/global_customers').on('value', (snap) => {
+            const data = snap.val() || {};
+            let allCustomers = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+            window.localCustomersData = allCustomers.filter(c => !c.structureId || String(c.structureId) === String(structId)).sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+            window.renderTabellaCRM();
+        });
+
+        firebase.database().ref(`MASTER_ADMIN_DB/structures_data/${structId}/app`).on('value', (snap) => {
+            const data = snap.val() || {};
+            let allApps = [];
+            Object.keys(data).forEach(date => {
+                const dayApps = Array.isArray(data[date]) ? data[date] : Object.values(data[date]);
+                dayApps.forEach(a => { if(a && a.id) allApps.push({...a, dataString: date}); });
+            });
+            allApps.sort((a, b) => new Date(b.dataString) - new Date(a.dataString));
+            window.localAppsData = allApps;
+            window.renderTabellaCRM();
+        });
+    }
+
+    // LOGICA TAB 
+    window.sysOpenProfileTab = function(tabName) {
+        document.getElementById('tab-history').style.display = tabName === 'history' ? 'block' : 'none';
+        document.getElementById('tab-docs').style.display = tabName === 'docs' ? 'block' : 'none';
+        
+        document.getElementById('tabBtn-history').style.color = tabName === 'history' ? 'var(--accent)' : 'var(--text-muted)';
+        document.getElementById('tabBtn-history').style.borderBottomColor = tabName === 'history' ? 'var(--accent)' : 'transparent';
+        
+        document.getElementById('tabBtn-docs').style.color = tabName === 'docs' ? 'var(--accent)' : 'var(--text-muted)';
+        document.getElementById('tabBtn-docs').style.borderBottomColor = tabName === 'docs' ? 'var(--accent)' : 'transparent';
+    };
+
+    window.handleCRMSearch = function() {
+        window.crmCurrentPage = 1;
+        window.renderTabellaCRM();
+    };
+
+    window.changeCRMPage = function(newPage) {
+        window.crmCurrentPage = newPage;
+        window.renderTabellaCRM();
+        const mainContent = document.getElementById('crmView');
+        if (mainContent) mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    // MOTORE DI RENDERING LISTA CON PAGINAZIONE A 50 ELEMENTI
+    window.renderTabellaCRM = function() {
+        const container = document.getElementById('crmListContainer');
+        const badge = document.getElementById('crmTotalBadge');
+        const searchInput = document.getElementById('searchLocalCRM');
+        const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+        if (!container) return;
+
+        // Filtro clienti
+        const filtered = window.localCustomersData.filter(c => {
+            const nome = (c.nome || 'Sconosciuto').toLowerCase();
+            const tel = (c.tel || '').toLowerCase();
+            const cam = String(c.cam || '').toLowerCase();
+            if (!searchTerm) return true;
+            return nome.includes(searchTerm) || tel.includes(searchTerm) || cam.includes(searchTerm);
+        });
+
+        const totalItems = filtered.length;
+        if (badge) badge.innerText = `Totale: ${totalItems} Clienti`;
+
+        if (totalItems === 0) {
+            container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-muted); font-size:16px;">Nessun cliente corrisponde ai criteri di ricerca.</div>`;
+            return;
+        }
+
+        // Calcolo Paginazione
+        const totalPages = Math.ceil(totalItems / CRM_ITEMS_PER_PAGE) || 1;
+        if (window.crmCurrentPage > totalPages) window.crmCurrentPage = totalPages;
+        if (window.crmCurrentPage < 1) window.crmCurrentPage = 1;
+
+        const startIdx = (window.crmCurrentPage - 1) * CRM_ITEMS_PER_PAGE;
+        const endIdx = Math.min(startIdx + CRM_ITEMS_PER_PAGE, totalItems);
+        const pageItems = filtered.slice(startIdx, endIdx);
+
+        let html = `
+        <div class="table-responsive">
+            <table class="compact-table">
+                <thead>
+                    <tr>
+                        <th style="text-align:center; width:70px;">Privacy</th>
+                        <th>Cliente</th>
+                        <th style="text-align:center;">Camera</th>
+                        <th>Telefono</th>
+                        <th>Data di Nascita</th>
+                        <th style="text-align:right;">Spesa Totale</th>
+                        <th style="text-align:right; width:140px;">Azione</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        pageItems.forEach(c => {
+            const nome = c.nome || 'Sconosciuto';
+            const tel = c.tel || '-';
+            const dob = c.dataNascita || '-';
+
+            const cApps = window.localAppsData.filter(a => (a.cog || '').toLowerCase() === nome.toLowerCase());
+            let spesaTotale = 0;
+            cApps.forEach(a => { if(a.pagato) spesaTotale += parseFloat(a.price || a.prezzo || 0); });
+
+            let camera = c.cam || '-';
+            if (cApps.length > 0 && cApps[0].cam && String(cApps[0].cam).trim() !== "") camera = cApps[0].cam;
+
+            // Icona V (Verde) o X (Rossa) al posto del semaforo
+            const hasPrivacy = (c.docs && Object.keys(c.docs).length > 0) || c.privacyFirmata === true;
+            const privacyBadge = hasPrivacy 
+                ? `<span title="Privacy Firmata" style="display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:6px; background:rgba(16, 185, 129, 0.15); color:var(--green); border:1px solid rgba(16, 185, 129, 0.4); font-weight:900; font-size:15px;">✓</span>`
+                : `<span title="Privacy Mancante" style="display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:6px; background:rgba(239, 68, 68, 0.15); color:var(--red); border:1px solid rgba(239, 68, 68, 0.4); font-weight:900; font-size:15px;">✗</span>`;
+
+            const safeName = nome.replace(/'/g, "\\'");
+
+            html += `
+            <tr style="cursor:pointer;" onclick="window.apriProfiloCRM('${c.id}', '${safeName}')">
+                <td style="text-align:center;">${privacyBadge}</td>
+                <td><span class="client-name">${nome}</span></td>
+                <td style="text-align:center;"><b style="color:var(--gold);">${camera}</b></td>
+                <td><b>${tel}</b></td>
+                <td><span style="color:var(--text-muted); font-weight:bold;">${dob}</span></td>
+                <td style="text-align:right;"><b style="color:var(--green); font-size:14px;">€ ${spesaTotale.toFixed(2).replace('.', ',')}</b></td>
+                <td style="text-align:right;">
+                    <button style="display:inline-flex; align-items:center; gap:5px; padding:6px 12px; border-radius:6px; font-size:11px; font-weight:bold; color:var(--accent); background:rgba(56, 189, 248, 0.1); border:1px solid rgba(56, 189, 248, 0.3); cursor:pointer; transition:0.2s;" onmouseover="this.style.background='var(--accent)'; this.style.color='#0f172a';" onmouseout="this.style.background='rgba(56, 189, 248, 0.1)'; this.style.color='var(--accent)';" onclick="event.stopPropagation(); window.apriProfiloCRM('${c.id}', '${safeName}')">
+                        <i class="material-icons-round" style="font-size:14px;">visibility</i> SCHEDA
+                    </button>
+                </td>
+            </tr>`;
+        });
+
+        html += `</tbody></table></div>`;
+
+        // Costruzione Barra di Paginazione (Numeri e Frecce)
+        let pageButtons = '';
+        pageButtons += `<button class="page-btn" ${window.crmCurrentPage === 1 ? 'disabled' : ''} onclick="window.changeCRMPage(${window.crmCurrentPage - 1})" title="Pagina Precedente"><i class="material-icons-round" style="font-size:16px;">chevron_left</i></button>`;
+
+        let startPage = Math.max(1, window.crmCurrentPage - 3);
+        let endPage = Math.min(totalPages, startPage + 6);
+        if (endPage - startPage < 6) startPage = Math.max(1, endPage - 6);
+
+        if (startPage > 1) {
+            pageButtons += `<button class="page-btn" onclick="window.changeCRMPage(1)">1</button>`;
+            if (startPage > 2) pageButtons += `<span style="color:var(--text-muted); padding:0 4px;">...</span>`;
+        }
+
+        for (let p = startPage; p <= endPage; p++) {
+            pageButtons += `<button class="page-btn ${p === window.crmCurrentPage ? 'active' : ''}" onclick="window.changeCRMPage(${p})">${p}</button>`;
+        }
+
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) pageButtons += `<span style="color:var(--text-muted); padding:0 4px;">...</span>`;
+            pageButtons += `<button class="page-btn" onclick="window.changeCRMPage(${totalPages})">${totalPages}</button>`;
+        }
+
+        pageButtons += `<button class="page-btn" ${window.crmCurrentPage === totalPages ? 'disabled' : ''} onclick="window.changeCRMPage(${window.crmCurrentPage + 1})" title="Pagina Successiva"><i class="material-icons-round" style="font-size:16px;">chevron_right</i></button>`;
+
+        html += `
+        <div class="pagination-bar">
+            <div class="page-info">Mostrati <b>${startIdx + 1}-${endIdx}</b> di <b>${totalItems}</b> clienti (Pagina ${window.crmCurrentPage} di ${totalPages})</div>
+            <div class="page-controls">${pageButtons}</div>
+        </div>`;
+
+        container.innerHTML = html;
+    };
+
+    // Neutralizza il vecchio render automatico di Desktop_AuthSync.js per evitare la vecchia grafica al caricamento
+    window.sysRenderLocalCRM = window.renderTabellaCRM;
+
+    window.sysSaveCustomerNote = function() {
+        const note = document.getElementById('cp_note').value;
+        if(window.currentOpenCustId) {
+            firebase.database().ref('MASTER_ADMIN_DB/global_customers').child(window.currentOpenCustId).update({ note: note });
+            if(window.showToast) window.showToast("Note salvate!");
+        }
+    };
+
+    window.apriProfiloCRM = function(cId, nomeCliente) {
+        const match = window.localCustomersData.find(c => c.id === cId);
+        if(!match) return;
+        window.currentOpenCustId = cId;
+        const mod = document.getElementById('customerProfileModal');
+        
+        if (mod) {
+            document.getElementById('cp_nome').innerText = match.nome || "Sconosciuto";
+            document.getElementById('cp_tel').innerText = match.tel || "-";
+            document.getElementById('cp_dob').innerText = match.dataNascita || "-";
+            document.getElementById('cp_note').value = match.note || "";
+            
+            const cApps = window.localAppsData.filter(a => (a.cog || '').toLowerCase() === (match.nome || '').toLowerCase());
+            let spesaTotale = 0; let histHtml = '';
+            
+            if(cApps.length === 0) { 
+                histHtml = '<tr><td colspan="4" style="text-align:center; padding:30px; color:var(--text-muted);">Nessun trattamento registrato nell\'agenda.</td></tr>'; 
+            } else {
+                cApps.forEach(a => {
+                    const price = parseFloat(a.price || a.prezzo || 0); 
+                    if(a.pagato) spesaTotale += price;
+                    const dateParts = a.dataString.split('-'); const dateIt = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : a.dataString;
+                    const stato = a.pagato ? '<span style="color:var(--green); font-size:10px; font-weight:bold; border:1px solid var(--green); padding:2px 4px; border-radius:4px;">PAGATO</span>' : '<span style="color:var(--red); font-size:10px; font-weight:bold; border:1px solid var(--red); padding:2px 4px; border-radius:4px;">DA PAGARE</span>';
+                    
+                    histHtml += `<tr><td style="font-weight:bold; color:var(--text-main); font-size:14px;">${dateIt}</td><td style="color:var(--text-muted); font-size:12px;">TOUCH WELNESS</td><td><b style="display:block; color:var(--accent); font-size:13px; text-transform:uppercase;">${a.serv || 'Trattamento'} (${a.dur || 30} min)</b><span style="font-size:11px; color:var(--gold); font-weight:bold;">OPERATORE: ${a.op || 'Non Assegnato'}</span></td><td style="text-align:right;"><b style="display:block; font-size:16px; color:var(--green); margin-bottom:4px;">${price.toFixed(2)} €</b>${stato}</td></tr>`;
+                });
+            }
+            document.getElementById('cp_history').innerHTML = histHtml;
+            document.getElementById('cp_spent').innerText = spesaTotale.toFixed(2) + " €";
+            
+            // RENDERING LISTA DOCUMENTI CON I 3 BOTTONI
+            const docsTable = document.getElementById('cp_docs_table');
+            docsTable.innerHTML = "";
+            if(match.docs && Object.keys(match.docs).length > 0) {
+                Object.entries(match.docs).forEach(([docId, doc]) => {
+                    docsTable.innerHTML += `
+                    <tr id="row_doc_${docId}">
+                        <td style="font-size:12px; font-weight:bold;">${doc.dataInserimento || '-'}</td>
+                        <td><b style="color:var(--text-main); font-size:14px;">${doc.nomeDoc || 'Consenso Privacy'}</b></td>
+                        <td style="text-align:right; display:flex; justify-content:flex-end; gap:6px;">
+                            <button onclick="window.sysViewPdfModal('${doc.link}', '${docId}')" style="display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; background:rgba(56, 189, 248, 0.1); color:var(--accent); border:1px solid var(--accent); border-radius:8px; cursor:pointer; transition:0.2s;" title="Visualizza" onmouseover="this.style.background='var(--accent)'; this.style.color='#0f172a';" onmouseout="this.style.background='rgba(56, 189, 248, 0.1)'; this.style.color='var(--accent)';">
+                                <i class="material-icons-round" style="font-size:16px;">visibility</i>
+                            </button>
+                            <button onclick="window.sysDownloadPdf('${doc.link}')" style="display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; background:rgba(16, 185, 129, 0.1); color:var(--green); border:1px solid var(--green); border-radius:8px; cursor:pointer; transition:0.2s;" title="Salva su PC" onmouseover="this.style.background='var(--green)'; this.style.color='#fff';" onmouseout="this.style.background='rgba(16, 185, 129, 0.1)'; this.style.color='var(--green)';">
+                                <i class="material-icons-round" style="font-size:16px;">download</i>
+                            </button>
+                            <button onclick="window.sysDeletePdf('${docId}')" style="display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; background:rgba(239, 68, 68, 0.1); color:var(--red); border:1px solid var(--red); border-radius:8px; cursor:pointer; transition:0.2s;" title="Elimina" onmouseover="this.style.background='var(--red)'; this.style.color='#fff';" onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'; this.style.color='var(--red)';">
+                                <i class="material-icons-round" style="font-size:16px;">delete</i>
+                            </button>
+                        </td>
+                    </tr>`;
+                });
+            } else { 
+                docsTable.innerHTML = `<tr><td colspan='3' style='text-align:center; padding:40px; color:var(--text-muted)'><i class='material-icons-round' style='font-size:32px; opacity:0.5; margin-bottom:10px;'>find_in_page</i><br>Nessun documento firmato.<br><span style='font-size:12px;'>Il file apparirà qui automaticamente dopo la firma sul Tablet.</span></td></tr>`; 
+            }
+
+            window.sysOpenProfileTab('history'); 
+            mod.style.display = 'flex';
+        }
+    };
+
+    window.addEventListener('DOMContentLoaded', () => { initNuovoCRM(); });
+</script>
+</body>
+</html>

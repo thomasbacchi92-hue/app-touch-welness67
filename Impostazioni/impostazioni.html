@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="it" translate="no">
+<head>
+<meta name="google" content="notranslate">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Impostazioni Generali - TOUCH WELNESS</title>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<style>
+  :root { --bg-body: #0f172a; --bg-panel: #1e293b; --border-line: #334155; --text-main: #f8fafc; --text-muted: #94a3b8; --accent: #38bdf8; --gold: #fbbf24; --purple: #a855f7; --red: #ef4444; --green: #10b981; }
+  :root.light-theme { --bg-body: #f8fafc; --bg-panel: #ffffff; --border-line: #e2e8f0; --text-main: #0f172a; --text-muted: #64748b; }
+  
+  body { font-family: -apple-system, sans-serif; background: var(--bg-body); margin: 0; display: flex; flex-direction: column; height: 100vh; color: var(--text-main); }
+  * { box-sizing: border-box; }
+
+  .settings-layout { display: flex; flex: 1; overflow: hidden; }
+  .settings-sidebar { width: 260px; background: var(--bg-panel); border-right: 1px solid var(--border-line); padding: 15px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; overflow-y:auto; }
+  .settings-content-area { flex: 1; overflow-y: auto; padding: 25px; display: flex; justify-content: center; align-items: flex-start; }
+  
+  .sidebar-btn { background: transparent; border: 1px solid transparent; color: var(--text-muted); font-size: 12px; font-weight: bold; padding: 12px 15px; border-radius: 8px; cursor: pointer; text-align: left; transition: 0.2s; display: flex; align-items: center; gap: 10px; text-transform: uppercase; }
+  .sidebar-btn i { font-size: 18px; transition: 0.2s; }
+  .sidebar-btn:hover { background: rgba(255,255,255,0.05); color: var(--text-main); }
+  .sidebar-btn.active { background: rgba(56, 189, 248, 0.1); border-color: var(--accent); color: var(--accent); }
+
+  .settings-container { width: 100%; max-width: 1000px; }
+  .tab-view { display: none; width: 100%; animation: fadeIn 0.3s ease; }
+  .tab-view.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+
+  .settings-grid { display: flex; flex-direction: column; gap: 20px; }
+  .settings-card { background: var(--bg-panel); border: 1px solid var(--border-line); border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); display: flex; flex-direction: column; transition: 0.3s; width: 100%; }
+  
+  .settings-card h2 { margin-top: 0; font-size: 14px; color: var(--purple); text-transform: uppercase; display: flex; align-items: center; gap: 8px; border-bottom: 1px dashed var(--border-line); padding-bottom: 12px; margin-bottom: 20px; }
+  
+  .form-row-2col { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+  
+  .form-group-box { background: var(--bg-body); padding: 15px; border-radius: 8px; border: 1px solid var(--border-line); display: flex; flex-direction: column; justify-content: space-between; height: 100%; }
+  .form-row { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px dashed rgba(255,255,255,0.05); }
+  .form-row:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+
+  .switch-container { display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--border-line); margin-bottom: 12px;}
+  .switch-lbl { font-size: 12px; font-weight: bold; text-transform: uppercase; margin: 0; display:block; }
+  
+  .switch { position: relative; display: flex; align-items: center; justify-content: center; width: 40px; height: 22px; flex-shrink: 0; margin: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; position: absolute; margin: 0; }
+  .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border-line); transition: .4s; border-radius: 20px; }
+  .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+  input:checked + .slider { background-color: var(--purple); } 
+  input:checked + .slider:before { transform: translateX(18px); }
+  
+  .form-input { width: 100%; padding: 8px 12px; border: 1px solid var(--border-line); border-radius: 6px; font-size: 13px; background: var(--bg-body); color: var(--text-main); outline:none; font-family: inherit; transition: 0.2s; }
+  .form-input:focus { border-color: var(--accent); }
+  textarea.form-input { resize: vertical; min-height: 100px; }
+  
+  .btn-save { background: var(--purple); color: #fff; width: 100%; padding: 12px 20px; border-radius: 8px; font-weight: 900; cursor: pointer; border: none; font-size: 12px; text-transform:uppercase; display:flex; align-items:center; justify-content:center; gap:6px; transition:0.2s;}
+  .btn-save:hover { filter: brightness(1.1); transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+  .btn-outline { background: transparent; border: 1px solid var(--border-line); color: var(--text-main); }
+  
+  .modello-item { background: var(--bg-body); border: 1px solid var(--border-line); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; transition: 0.2s; }
+  .modello-item:hover { border-color: var(--accent); }
+  .modello-item.is-default { border-color: var(--gold); box-shadow: 0 0 10px rgba(251, 191, 36, 0.1); background: rgba(251, 191, 36, 0.05); }
+  .modello-header { display: flex; justify-content: space-between; align-items: flex-start; }
+  .modello-title { font-weight: bold; font-size: 13px; color: var(--text-main); line-height:1.2; margin-bottom:4px; }
+  .modello-badge { font-size: 9px; background: var(--gold); color: #0f172a; padding: 2px 6px; border-radius: 4px; font-weight: bold; text-transform: uppercase; }
+  .modello-actions { display: flex; gap: 6px; border-top: 1px dashed var(--border-line); padding-top: 10px; margin-top: auto; }
+  .action-btn-sm { flex: 1; height: 30px; border-radius: 6px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; color: #fff; font-size: 11px; font-weight: bold; gap: 4px; }
+  .action-btn-sm:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+  .btn-star { background: var(--gold); color: #0f172a; }
+  .btn-star.inactive { background: transparent; border: 1px solid var(--border-line); color: var(--text-muted); }
+  .btn-edit { background: rgba(56, 189, 248, 0.1); color: var(--accent); border: 1px solid rgba(56, 189, 248, 0.3); }
+  .btn-del { background: rgba(239, 68, 68, 0.1); color: var(--red); border: 1px solid rgba(239, 68, 68, 0.3); }
+
+  .logic-cards-row { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+  .logic-card { flex: 1; min-width: 120px; background: var(--bg-body); border: 2px solid var(--border-line); border-radius: 8px; padding: 15px; text-align: center; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+  .logic-card:hover { border-color: var(--accent); background: rgba(56, 189, 248, 0.05); transform: translateY(-2px); }
+  .logic-card.active { border-color: var(--accent); background: rgba(56, 189, 248, 0.1); color: var(--accent); }
+  .logic-card.active i { color: var(--accent); }
+
+  .palette-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; margin-top: 15px; }
+  .palette-item { display: flex; align-items: center; gap: 8px; background: var(--bg-body); border: 1px solid var(--border-line); padding: 8px; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+  .palette-item:hover { background: rgba(255,255,255,0.05); border-color: var(--text-main); transform: translateX(2px); }
+  .palette-swatch { width: 20px; height: 20px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); flex-shrink:0; }
+
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 10001; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+  .modal-box { background: var(--bg-panel); padding: 25px; border-radius: 16px; width: 90%; max-width: 450px; border: 1px solid var(--border-line); box-shadow: 0 10px 40px rgba(0,0,0,0.8); text-align:left;}
+</style>
+<script>if(localStorage.getItem('tw_theme') === 'light') document.documentElement.classList.add('light-theme');</script>
+</head>
+<body>
+
+<div id="toastBlue" style="display:none; position:fixed; z-index:9999; right:30px; bottom:30px; background:var(--purple); color:#fff; padding:12px 24px; border-radius:8px; font-weight:bold; box-shadow:0 4px 15px rgba(0,0,0,0.4); pointer-events:none; transition: opacity 0.3s; align-items:center; gap:8px;">
+    <i class="material-icons-round" style="font-size:20px;">info</i><span id="toastMsg">Notifica</span>
+</div>
+
+<div id="tw-universal-navbar"></div>
+
+<div class="settings-layout">
+    <div class="settings-sidebar">
+        <h3 style="font-size:11px; color:var(--text-muted); text-transform:uppercase; margin:5px 0px 5px 10px;">Sistema</h3>
+        <button id="tabBtn-agenda" class="sidebar-btn active" onclick="switchSettingsTab('agenda')"><i class="material-icons-round">calendar_today</i> Logiche Agenda</button>
+        <button id="tabBtn-firma" class="sidebar-btn" onclick="switchSettingsTab('firma')"><i class="material-icons-round">draw</i> Firma Elettronica</button>
+        <button id="tabBtn-grafica" class="sidebar-btn" onclick="switchSettingsTab('grafica')"><i class="material-icons-round">palette</i> Colori e Grafica</button>
+        
+        <h3 style="font-size:11px; color:var(--text-muted); text-transform:uppercase; margin:15px 0px 5px 10px;">Reparti</h3>
+        <button id="tabBtn-spa" class="sidebar-btn" onclick="switchSettingsTab('spa')"><i class="material-icons-round">pool</i> Gestione SPA</button>
+        <button id="tabBtn-operatori" class="sidebar-btn" onclick="switchSettingsTab('operatori')"><i class="material-icons-round">groups</i> Gestione Staff</button>
+    </div>
+
+    <div class="settings-content-area">
+        <div class="settings-container">
+            
+            <!-- SCHEDA 1: AGENDA -->
+            <div id="view-agenda" class="tab-view active">
+                <div class="settings-grid">
+                    
+                    <div class="settings-card">
+                        <h2><i class="material-icons-round">tune</i> Regole Generali Agenda</h2>
+                        
+                        <div class="form-row-2col">
+                            <div class="form-group-box">
+                                <div class="form-row" style="border-bottom:1px solid var(--accent); padding-bottom:12px; margin-bottom:12px;">
+                                    <div>
+                                        <b style="color:var(--accent); font-size:13px;">Blocco Cabine</b><br>
+                                        <span style="font-size:10px; color:var(--text-muted);">Attiva lo Yield Management</span>
+                                    </div>
+                                    <label class="switch"><input type="checkbox" id="ui_yield_active"><span class="slider"></span></label>
+                                </div>
+                                <div class="form-row">
+                                    <span style="font-size:12px; font-weight:bold;">Staff Front Office</span>
+                                    <input type="number" id="ui_front_office" class="form-input" style="width:70px; text-align:center; font-weight:bold;" value="1">
+                                </div>
+                                <div class="form-row" style="border:none;">
+                                    <span style="font-size:12px; font-weight:bold;">Cabine Fisiche</span>
+                                    <input type="number" id="ui_num_cabine" class="form-input" style="width:70px; text-align:center; font-weight:bold;" value="5">
+                                </div>
+                            </div>
+
+                            <div class="form-group-box">
+                                <div class="form-row">
+                                    <span style="font-size:12px; font-weight:bold;">Ora Apertura</span>
+                                    <input type="time" id="ui_agenda_start" class="form-input" style="width:100px; text-align:center; font-weight:bold;" value="09:00">
+                                </div>
+                                <div class="form-row">
+                                    <span style="font-size:12px; font-weight:bold;">Ora Chiusura</span>
+                                    <input type="time" id="ui_agenda_end" class="form-input" style="width:100px; text-align:center; font-weight:bold;" value="20:00">
+                                </div>
+                                <div class="form-row">
+                                    <span style="font-size:12px; font-weight:bold;">Durata Default Blocco</span>
+                                    <input type="number" id="ui_block_duration" class="form-input" style="width:70px; text-align:center; font-weight:bold;" value="60">
+                                </div>
+                                
+                                <div class="switch-container" style="margin-top:10px; border-color:var(--accent);">
+                                    <div>
+                                        <span class="switch-lbl" style="color:var(--accent);">Orario Spezzato</span>
+                                        <span style="font-size:10px; color:var(--text-muted);">Aggiungi pausa pranzo.</span>
+                                    </div>
+                                    <label class="switch"><input type="checkbox" id="ui_pausa_active" onchange="document.getElementById('agenda_pausa_box').style.display = this.checked ? 'block' : 'none'"><span class="slider"></span></label>
+                                </div>
+                                <div id="agenda_pausa_box" style="display:none; background:rgba(0,0,0,0.1); padding:10px; border-radius:6px; margin-bottom:10px;">
+                                    <div class="form-row" style="border:none; padding:0 0 10px 0; margin:0;">
+                                        <span style="font-size:11px; font-weight:bold; color:var(--text-muted);">Inizio Pausa</span>
+                                        <input type="time" id="ui_pausa_start" class="form-input" style="width:90px; padding:6px; text-align:center;" value="13:00">
+                                    </div>
+                                    <div class="form-row" style="border:none; padding:0; margin:0;">
+                                        <span style="font-size:11px; font-weight:bold; color:var(--text-muted);">Fine Pausa</span>
+                                        <input type="time" id="ui_pausa_end" class="form-input" style="width:90px; padding:6px; text-align:center;" value="15:00">
+                                    </div>
+                                </div>
+
+                                <div class="form-row" style="border-top:1px dashed var(--border-line); padding-top:12px; margin-top:auto; border-bottom:none;">
+                                    <div>
+                                        <b style="font-size:12px; color:var(--accent);">Minuti Cuscinetto</b><br>
+                                        <span style="font-size:10px; color:var(--text-muted);">Durata rapida da agenda</span>
+                                    </div>
+                                    <input type="number" id="ui_cuscinetto_min" class="form-input" style="width:70px; text-align:center; font-weight:bold; color:var(--accent); border-color:var(--accent);" value="30">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-card">
+                        <h2><i class="material-icons-round">visibility</i> Visibilità Campi Form Agenda (Leve)</h2>
+                        <div id="agendaUiSwitchesContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px;"></div>
+                        <button class="btn-save" onclick="window.agendaModule.save()" style="margin-top:20px; width:auto; margin-left:auto;"><i class="material-icons-round">save</i> SALVA IMPOSTAZIONI AGENDA</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SCHEDA 2: FIRMA ELETTRONICA -->
+            <div id="view-firma" class="tab-view">
+                <div class="settings-grid">
+                    
+                    <div class="settings-card" style="border-color:var(--purple);">
+                        <h2 style="color:var(--purple);"><i class="material-icons-round">tablet_android</i> Gestione Dispositivo e Flusso</h2>
+                        
+                        <div class="form-row-2col">
+                            <div class="form-group-box" style="border-color:var(--purple);">
+                                <p style="font-size:11px; color:var(--text-muted); margin:0 0 12px 0;">Associa il tablet usando questo link univoco.</p>
+                                <input type="text" id="shortLinkDisplay" class="form-input" style="font-size:14px; font-weight:bold; color:var(--accent); text-align:center; background:rgba(0,0,0,0.2); border:1px dashed var(--border-line); margin-bottom:12px; cursor:default;" readonly placeholder="Nessun link">
+                                <div style="display:flex; gap:10px; margin-bottom:15px;">
+                                    <button class="btn-save btn-outline" style="flex:1; margin:0;" onclick="window.firmaModule.copyLink()"><i class="material-icons-round" style="font-size:16px;">content_copy</i> Copia</button>
+                                    <button class="btn-save btn-outline" style="flex:1; margin:0; border-color:var(--accent); color:var(--accent);" onclick="window.firmaModule.generaNuovoLink()"><i class="material-icons-round" style="font-size:16px;">autorenew</i> Nuovo</button>
+                                </div>
+                                <button class="btn-save" onclick="window.firmaModule.salvaConnessione()" style="background:var(--green); margin-top:auto;"><i class="material-icons-round">save</i> SALVA CONNESSIONE</button>
+                            </div>
+
+                            <div class="form-group-box">
+                                <p style="font-size:11px; color:var(--text-muted); margin:0 0 15px 0;">Gestisci il comportamento dell'agenda post-firma.</p>
+                                <div class="switch-container" style="margin:auto 0; padding:15px;">
+                                    <div>
+                                        <span class="switch-lbl" style="color:var(--accent); font-size:13px;">Anteprima in Agenda</span>
+                                        <span style="font-size:10px; color:var(--text-muted);">Attiva revisione prima di inviare a Drive.</span>
+                                    </div>
+                                    <label class="switch"><input type="checkbox" id="toggleAnteprimaFirma" onchange="window.firmaModule.saveAnteprimaSettings()"><span class="slider"></span></label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-line); padding-bottom:12px; margin-bottom:20px;">
+                            <h2 style="margin:0; border:none; padding:0; color:var(--accent);"><i class="material-icons-round">description</i> Modelli Privacy</h2>
+                            <button class="btn-save" style="width:auto; margin:0; background:var(--accent); color:#0f172a;" onclick="window.firmaModule.openModelloModal()">
+                                <i class="material-icons-round" style="font-size:16px;">add</i> CREA MODELLO
+                            </button>
+                        </div>
+                        <div id="modelliListContainer" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:15px;">
+                            <div style="text-align:center; color:var(--text-muted); font-size:13px; padding:30px; grid-column: 1 / -1;"><i class="material-icons-round" style="animation:spin 1s linear infinite;">sync</i> Caricamento...</div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- SCHEDA 3: GRAFICA -->
+            <div id="view-grafica" class="tab-view">
+                <div class="settings-card">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                        <h2 style="margin:0; border:none; padding:0;"><i class="material-icons-round">color_lens</i> Motore Grafico Appuntamenti</h2>
+                        <div class="switch-container" style="margin:0; padding:8px 12px; border-color:var(--accent); background:rgba(56, 189, 248, 0.1);">
+                            <span class="switch-lbl" style="color:var(--accent); margin-right:15px;">Usa Colori Default</span>
+                            <label class="switch"><input type="checkbox" id="graficaPresetToggle" onchange="window.graficaModule.togglePreset()"><span class="slider"></span></label>
+                        </div>
+                    </div>
+
+                    <div id="graficaLogicWrapper" style="transition: 0.3s; position: relative;">
+                        <h3 style="font-size:12px; color:var(--text-muted); text-transform:uppercase; margin-bottom:12px;">Criterio di Colorazione</h3>
+                        <div class="logic-cards-row">
+                            <div class="logic-card active" id="cardLogicServizio" onclick="window.graficaModule.switchLogic('servizio')"><i class="material-icons-round">spa</i><b>Per Trattamento</b></div>
+                            <div class="logic-card" id="cardLogicDurata" onclick="window.graficaModule.switchLogic('durata')"><i class="material-icons-round">timer</i><b>Per Tempistica</b></div>
+                            <div class="logic-card" id="cardLogicTipologia" onclick="window.graficaModule.switchLogic('tipologia')"><i class="material-icons-round">category</i><b>Per Tipologia</b></div>
+                        </div>
+                        <div id="graficaDynamicRows" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:15px; margin-top:20px;"></div>
+                    </div>
+                    
+                    <h3 style="font-size:12px; color:var(--text-muted); text-transform:uppercase; margin-top:30px; margin-bottom:15px; border-top:1px dashed var(--border-line); padding-top:20px;"><i class="material-icons-round" style="font-size:16px; vertical-align:middle;">assignment_turned_in</i> Priorità Stati</h3>
+                    <div class="switch-container">
+                        <div>
+                            <b style="font-size:13px;">Sovrascrivi in base allo stato</b><br>
+                            <span style="font-size:11px; color:var(--text-muted);">Ignora i colori di base se Pagato o Eseguito.</span>
+                        </div>
+                        <label class="switch"><input type="checkbox" id="graficaStatoToggle" onchange="window.graficaModule.toggleStato()"><span class="slider"></span></label>
+                    </div>
+                    <div id="graficaStatoRows" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:15px; transition:0.3s;"></div>
+
+                    <div style="display:flex; gap:15px; margin-top:25px; justify-content:flex-end;">
+                        <button class="btn-save btn-outline" onclick="window.graficaModule.resetColors()" style="width:auto; padding:12px 20px;" title="Ripristina Default"><i class="material-icons-round">replay</i> RESET</button>
+                        <button class="btn-save" onclick="window.graficaModule.saveAll()" style="width:auto; padding:12px 25px;"><i class="material-icons-round">save</i> SALVA COLORI</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SCHEDA 4: SPA (NUOVO DESIGN COMPATTO A INCASRO) -->
+            <div id="view-spa" class="tab-view">
+                <div class="settings-grid">
+                    
+                    <div class="settings-card">
+                        <h2><i class="material-icons-round">security</i> Operatività e Limiti (Semaforo)</h2>
+                        <div class="form-row-2col">
+                            <div class="form-group-box">
+                                <div class="form-row" style="border-bottom:1px solid var(--accent); padding-bottom:12px; margin-bottom:12px;">
+                                    <div>
+                                        <b style="color:var(--accent); font-size:13px;">Settore di Default</b><br>
+                                        <span style="font-size:10px; color:var(--text-muted);">Auto-compilato all'apertura</span>
+                                    </div>
+                                    <select id="r_preset" class="form-input" style="width:130px; font-weight:bold;">
+                                        <option value="Piscina">Piscina</option>
+                                        <option value="SPA">SPA (Percorso)</option>
+                                    </select>
+                                </div>
+                                <div class="switch-container" style="margin:0; border:none; padding:0; background:transparent;">
+                                    <div>
+                                        <span class="switch-lbl">Conferma Eliminazione</span>
+                                        <span style="font-size:10px; color:var(--text-muted);">Pop-up prima di eliminare</span>
+                                    </div>
+                                    <label class="switch"><input type="checkbox" id="r_confirm_del"><span class="slider"></span></label>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group-box">
+                                <div class="form-row">
+                                    <div>
+                                        <span style="font-size:12px; font-weight:bold; color:var(--gold);">Soglia Attenzione (Giallo)</span><br>
+                                        <span style="font-size:10px; color:var(--text-muted);">Avviso (0 = disattiva)</span>
+                                    </div>
+                                    <input type="number" id="r_soglia_att" class="form-input" style="width:70px; text-align:center; font-weight:bold; border-color:var(--gold);" min="0">
+                                </div>
+                                <div class="form-row" style="border:none; padding:0; margin:0;">
+                                    <div>
+                                        <span style="font-size:12px; font-weight:bold; color:var(--red);">Capacità Massima (Rosso)</span><br>
+                                        <span style="font-size:10px; color:var(--text-muted);">Limite (0 = disattiva)</span>
+                                    </div>
+                                    <input type="number" id="r_soglia_full" class="form-input" style="width:70px; text-align:center; font-weight:bold; border-color:var(--red);" min="0">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-card">
+                        <h2><i class="material-icons-round">view_column</i> Campi Visibili (Form Ingressi)</h2>
+                        <div class="form-row-2col">
+                            <div class="form-group-box">
+                                <div class="switch-container" style="margin-bottom:10px;">
+                                    <span class="switch-lbl">Campo PAX</span>
+                                    <label class="switch"><input type="checkbox" id="f_pax"><span class="slider"></span></label>
+                                </div>
+                                <div class="switch-container" style="margin:0;">
+                                    <span class="switch-lbl">Campo OSPITE</span>
+                                    <label class="switch"><input type="checkbox" id="f_cog"><span class="slider"></span></label>
+                                </div>
+                            </div>
+                            <div class="form-group-box">
+                                <div class="switch-container" style="margin-bottom:10px;">
+                                    <span class="switch-lbl">Campo NOTE</span>
+                                    <label class="switch"><input type="checkbox" id="f_note"><span class="slider"></span></label>
+                                </div>
+                                <div style="font-size:11px; color:var(--text-muted); text-align:center; padding:5px;">
+                                    Disabilitando i campi il form si stringerà.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-card" style="width:100%;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed var(--border-line); padding-bottom:15px; margin-bottom:20px;">
+                            <h2 style="margin:0; border:none; padding:0;"><i class="material-icons-round">schedule</i> Orari di Apertura Struttura</h2>
+                            <div class="switch-container" style="margin:0; padding:6px 12px; border-color:var(--accent); background:rgba(56, 189, 248, 0.1);">
+                                <span class="switch-lbl" style="color:var(--accent); margin-right:15px;">Applica a tutta la settimana</span>
+                                <label class="switch"><input type="checkbox" id="spa_sync_week" onchange="window.spaModule.toggleSyncWeek()"><span class="slider"></span></label>
+                            </div>
+                        </div>
+                        
+                        <div style="display:flex; gap:10px; margin-bottom:20px; border-bottom:1px solid var(--border-line); padding-bottom:15px;">
+                            <button class="btn-save btn-outline spa-tab-btn active" id="spaTabPiscina" style="width:auto; flex:1;" onclick="window.spaModule.switchTab('piscina')">ORARI PISCINA</button>
+                            <button class="btn-save btn-outline spa-tab-btn" id="spaTabSpa" style="width:auto; flex:1;" onclick="window.spaModule.switchTab('spa')">ORARI SPA (PERCORSO)</button>
+                        </div>
+                        
+                        <!-- Calendario Settimanale Dinamico -->
+                        <div id="spaDaysContainer" style="display:flex; flex-direction:column; gap:12px;"></div>
+                        
+                        <button class="btn-save" onclick="window.spaModule.save()" style="width:auto; margin-left:auto; margin-top:25px; padding:12px 30px;"><i class="material-icons-round">save</i> SALVA IMPOSTAZIONI SPA</button>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- SCHEDA 5: OPERATORI -->
+            <div id="view-operatori" class="tab-view">
+                <div class="settings-card" style="min-height:600px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed var(--border-line); padding-bottom:15px; margin-bottom:20px;">
+                        <h2 style="margin:0; border:none; padding:0;"><i class="material-icons-round">groups</i> Elenco Staff e Permessi</h2>
+                        <button class="btn-save" style="width:auto; margin:0; background:var(--accent); color:#0f172a;" onclick="document.getElementById('modalAddOp').style.display='flex'">
+                            <i class="material-icons-round">person_add</i> AGGIUNGI OPERATORE
+                        </button>
+                    </div>
+                    <div id="operatoriGridContainer" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:15px;">
+                        <div style="color:var(--text-muted); font-size:14px;">Caricamento staff...</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Modal Colore Grafica -->
+<div id="modalColorPalette" class="modal-overlay" onclick="if(event.target===this) this.style.display='none'">
+    <div class="modal-box" style="max-width:450px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border-line); padding-bottom:15px; margin-bottom:15px;">
+            <b style="color:var(--accent); font-size:15px;"><i class="material-icons-round" style="vertical-align:middle; font-size:18px;">palette</i> Seleziona Colore</b>
+            <i class="material-icons-round" style="cursor:pointer; color:var(--text-muted); font-size:20px;" onclick="document.getElementById('modalColorPalette').style.display='none'">close</i>
+        </div>
+        <input type="hidden" id="paletteTargetId"><input type="hidden" id="paletteTargetType">
+        <div id="paletteGridContainer" class="palette-grid"></div>
+        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed var(--border-line); display:flex; align-items:center; justify-content:space-between;">
+            <b style="font-size:12px; color:var(--text-muted);">Colore Custom:</b>
+            <input type="color" id="paletteCustomPicker" style="width:35px; height:35px; border:none; cursor:pointer; background:transparent;" onchange="window.graficaModule.applyCustomColor(this.value)">
+        </div>
+    </div>
+</div>
+
+<!-- Modal Aggiungi Operatore -->
+<div id="modalAddOp" class="modal-overlay" onclick="if(event.target===this) this.style.display='none'">
+    <div class="modal-box" style="max-width:380px;">
+        <h3 style="color:var(--accent); margin-top:0; border-bottom:1px solid var(--border-line); padding-bottom:15px; font-size:16px; text-transform:uppercase; margin-bottom:20px;">Nuovo Operatore</h3>
+        <input type="text" id="newOpNick" class="form-input" placeholder="Nickname (es. Thomas_Spa)" style="margin-bottom:12px;">
+        <input type="text" id="newOpName" class="form-input" placeholder="Nome" style="margin-bottom:12px;">
+        <input type="text" id="newOpSurname" class="form-input" placeholder="Cognome" style="margin-bottom:20px;">
+        <div style="display:flex; gap:12px;">
+            <button class="btn-save btn-outline" style="flex:1;" onclick="document.getElementById('modalAddOp').style.display='none'">Annulla</button>
+            <button class="btn-save" style="flex:1; background:var(--accent); color:#000;" onclick="window.operatoriModule.createOp()">Crea</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL CREA/MODIFICA MODELLO FIRMA -->
+<div id="modalModello" class="modal-overlay" onclick="if(event.target===this) window.firmaModule.closeModelloModal()">
+    <div class="modal-box" style="width:95%; max-width:600px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:15px; border-bottom:1px solid var(--border-line); padding-bottom:15px;">
+            <b id="modalModelloTitleLabel" style="color:var(--accent); font-size:16px;"><i class="material-icons-round" style="vertical-align:middle; font-size:18px;">edit_document</i> Crea Modello</b>
+            <i class="material-icons-round" style="cursor:pointer; color:var(--text-muted); font-size:22px;" onclick="window.firmaModule.closeModelloModal()">close</i>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:15px; max-height:60vh; overflow-y:auto; padding-right:5px; margin-bottom:20px;">
+            <input type="hidden" id="modelloId">
+            <div>
+                <label style="font-size:11px; font-weight:bold; color:var(--text-muted); text-transform:uppercase; margin-bottom:6px; display:block;">Titolo Identificativo</label>
+                <input type="text" id="modelloTitolo" class="form-input" placeholder="Es. Consenso Base">
+            </div>
+            <div>
+                <label style="font-size:11px; font-weight:bold; color:var(--text-muted); text-transform:uppercase; margin-bottom:6px; display:block;">Testo del Documento</label>
+                <div style="background:rgba(56, 189, 248, 0.1); padding:8px 10px; border-radius:6px; margin-bottom:10px; font-size:11px; color:var(--text-main);">
+                    Usa: <code style="color:var(--gold);">[CLIENTE]</code> <code style="color:var(--gold);">[DATA]</code> <code style="color:var(--gold);">[SERVIZIO]</code> <code style="color:var(--gold);">[PATOLOGIE]</code> <b style="color:var(--green);">[CHECK]</b>.
+                </div>
+                <textarea id="modelloCorpo" class="form-input" style="min-height: 180px;" placeholder="HTML consentito"></textarea>
+            </div>
+        </div>
+        <div style="display:flex; gap:15px;">
+            <button class="btn-save btn-outline" style="flex:1;" onclick="window.firmaModule.closeModelloModal()">Annulla</button>
+            <button class="btn-save" style="flex:2; background:var(--green);" onclick="window.firmaModule.saveModello()"><i class="material-icons-round">save</i> SALVA MODELLO</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL ELIMINA MODELLO FIRMA -->
+<div id="modalDelModello" class="modal-overlay" onclick="if(event.target===this) this.style.display='none'">
+    <div class="modal-box" style="width:90%; max-width:340px; text-align:center; border:1px solid var(--red); padding:30px;">
+        <i class="material-icons-round" style="font-size:40px; color:var(--red); margin-bottom:15px;">warning</i>
+        <h3 style="color:var(--text-main); margin-top:0; font-size:16px;">Eliminare modello?</h3>
+        <input type="hidden" id="delModelloId">
+        <div style="display:flex; gap:12px; margin-top:25px;">
+            <button class="btn-save btn-outline" style="flex:1; margin:0;" onclick="document.getElementById('modalDelModello').style.display='none'">Annulla</button>
+            <button class="btn-save" style="flex:1; margin:0; background:var(--red); border:none;" onclick="window.firmaModule.eseguiDeleteModello()">Elimina</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const localStructId = localStorage.getItem("tw_structure_id");
+    if(!localStructId) window.location.href="../login.html"; 
+    
+    const fbConfig = { apiKey: "AIzaSyCrDuK7SWHdbzrJR-pNpxmRwGnZgV2Dd2Y", authDomain: "touch-welness-massage.firebaseapp.com", databaseURL: "https://touch-welness-massage-default-rtdb.europe-west1.firebasedatabase.app", projectId: "touch-welness-massage", storageBucket: "touch-welness-massage.firebasestorage.app" };
+    if (!firebase.apps.length) firebase.initializeApp(fbConfig);
+    window.twStructId = localStructId;
+
+    window.showToast = function(msg, isError=false) {
+        const x = document.getElementById("toastBlue");
+        if(x) {
+            document.getElementById("toastMsg").innerText = msg;
+            x.style.background = isError ? "var(--red)" : "var(--purple)";
+            x.style.display = "flex"; x.style.opacity = "1";
+            setTimeout(() => { x.style.opacity = "0"; setTimeout(() => x.style.display="none", 300); }, 3000);
+        }
+    };
+
+    function switchSettingsTab(tabId) {
+        document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
+        document.getElementById('tabBtn-' + tabId).classList.add('active');
+        document.getElementById('view-' + tabId).classList.add('active');
+    }
+</script>
+
+<script src="../Master_core/Component_Navbar.js"></script>
+<script src="logic_agenda.js"></script>
+<script src="logic_grafica.js"></script>
+<script src="logic_spa.js"></script>
+<script src="logic_operatori.js"></script>
+<script src="logic_firma.js"></script>
+
+</body>
+</html>
